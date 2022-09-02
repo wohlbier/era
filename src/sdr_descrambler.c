@@ -22,6 +22,7 @@
 #include "sdr_base.h"
 
 
+#undef HPVM // TODO: REMOVE ME
 
 typedef unsigned char   uint8_t;
 

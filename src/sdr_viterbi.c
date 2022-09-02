@@ -44,6 +44,7 @@
 #include "hetero.h"
 #endif
 
+#undef HPVM // TODO: Remove me
 
 #define SDR_HPVM
 
@@ -61,11 +62,8 @@ uint64_t depunc_usec = 0LL;
 //#define  GENERATE_CHECK_VALUES
 
 // GLOBAL VARIABLES
+/*
 t_branchtab27 d_branchtab27_generic[2];
-//unsigned char d_metric0_generic[64] __attribute__ ((aligned(16)));
-//unsigned char d_metric1_generic[64] __attribute__ ((aligned(16)));
-//unsigned char d_path0_generic[64] __attribute__ ((aligned(16)));
-//unsigned char d_path1_generic[64] __attribute__ ((aligned(16)));
 
 int d_ntraceback = 0;
 int d_k = 0;
@@ -76,44 +74,11 @@ static const unsigned char *d_depuncture_pattern;
 
 static uint8_t d_depunctured[MAX_ENCODED_BITS];
 
-static const unsigned char PARTAB[256] = {
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	0, 1, 1, 0, 1, 0, 0, 1,
-	1, 0, 0, 1, 0, 1, 1, 0,
-}; 
 
 static const unsigned char PUNCTURE_1_2[2] = {1, 1};
 static const unsigned char PUNCTURE_2_3[4] = {1, 1, 1, 0};
 static const unsigned char PUNCTURE_3_4[6] = {1, 1, 1, 0, 0, 1};
+*/
 
 
 // Position in circular buffer where the current decoded byte is stored
@@ -128,7 +93,8 @@ extern void closeout_and_exit(int rval);
 // This routine "depunctures" the input data stream according to the 
 //  relevant encoding parameters, etc. and returns the depunctured data.
 
-uint8_t* depuncture(uint8_t *in) {
+uint8_t* depuncture(uint8_t *in, ofdm_param* d_ofdm, frame_param* d_frame, unsigned char* d_depuncture_pattern,
+		uint8_t* d_depunctured, int d_ntraceback, int d_k) {
 	int count;
 	int n_cbps = d_ofdm->n_cbps;
 	uint8_t *depunctured;
@@ -618,8 +584,42 @@ void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigne
 }
 
 // Initialize starting metrics to prefer 0 state
-void sdr_viterbi_chunks_init_generic() {
+void sdr_viterbi_chunks_init_generic(t_branchtab27* d_branchtab27_generic) {
 	int i;
+	const unsigned char PARTAB[256] = {
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0,
+}; 
 
 	int polys[2] = { 0x6d, 0x4f };
 	for(i=0; i < 32; i++) {
@@ -630,30 +630,53 @@ void sdr_viterbi_chunks_init_generic() {
 }
 
 
-void sdr_reset() {
+void sdr_reset(t_branchtab27* d_branchtab27_generic, ofdm_param* d_ofdm, int* d_ntraceback, 
+		unsigned char* d_depuncture_pattern, int* d_k) {
 
-	sdr_viterbi_chunks_init_generic();
+	const unsigned char PUNCTURE_1_2[2] = {1, 1};
+	const unsigned char PUNCTURE_2_3[4] = {1, 1, 1, 0};
+	const unsigned char PUNCTURE_3_4[6] = {1, 1, 1, 0, 0, 1};
+
+	sdr_viterbi_chunks_init_generic(d_branchtab27_generic);
 
 	switch(d_ofdm->encoding) {
 		case BPSK_1_2:
 		case QPSK_1_2:
 		case QAM16_1_2:
-			d_ntraceback = 5;
-			d_depuncture_pattern = PUNCTURE_1_2;
-			d_k = 1;
+			{
+				*d_ntraceback = 5;
+				int size = 2;
+				d_depuncture_pattern = (unsigned char*)malloc(size);
+				for(int i = 0; i < size; ++i) {
+					d_depuncture_pattern[i] = PUNCTURE_1_2[i];
+				}
+				*d_k = 1;
+			}
 			break;
 		case QAM64_2_3:
-			d_ntraceback = 9;
-			d_depuncture_pattern = PUNCTURE_2_3;
-			d_k = 2;
+			{
+				*d_ntraceback = 9;
+				int size = 4;
+				d_depuncture_pattern = (unsigned char*)malloc(size);
+				for(int i = 0; i < size; ++i) {
+					d_depuncture_pattern[i] = PUNCTURE_2_3[i];
+				}
+				*d_k = 2;
+			}
 			break;
 		case BPSK_3_4:
 		case QPSK_3_4:
 		case QAM16_3_4:
 		case QAM64_3_4:
-			d_ntraceback = 10;
-			d_depuncture_pattern = PUNCTURE_3_4;
-			d_k = 3;
+			{
+				*d_ntraceback = 10;
+				int size = 6;
+				d_depuncture_pattern = (unsigned char*)malloc(size);
+				for(int i = 0; i < size; ++i) {
+					d_depuncture_pattern[i] = PUNCTURE_3_4[i];
+				}
+				*d_k = 3;
+			}
 			break;
 	}
 }
@@ -670,12 +693,23 @@ void sdr_reset() {
 //  <return> : OUTPUT : uint8_t Array [ MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
 
 void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output) {
+	t_branchtab27 d_branchtab27_generic[2];
+
+	int d_ntraceback = 0;
+	int d_k = 0;
+
+	ofdm_param *d_ofdm = ofdm;
+	frame_param *d_frame = frame;
+	unsigned char *d_depuncture_pattern;
+
+	uint8_t d_depunctured[MAX_ENCODED_BITS];
+
 	d_ofdm = ofdm;
 	d_frame = frame;
 
 	*n_dec_char = 0; // We don't return this from do_sdr_decoding -- but we could?
 
-	sdr_reset();
+	sdr_reset(d_branchtab27_generic, d_ofdm, &d_ntraceback, d_depuncture_pattern, &d_k);
 
 	DEBUG(printf("In sdr_decode : num_in_bits = %u (+ 10?)\n", frame->n_encoded_bits);
 			printf("DEC: OFDM  : %u %u %u %u %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
@@ -698,7 +732,7 @@ void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_ch
 #ifdef INT_TIME
 	gettimeofday(&depunc_start, NULL);
 #endif
-	uint8_t *depunctured = depuncture(in);
+	uint8_t *depunctured = depuncture(in, d_ofdm, d_frame, d_depuncture_pattern, d_depunctured, d_ntraceback, d_k);
 #ifdef INT_TIME
 	gettimeofday(&depunc_stop, NULL);
 	depunc_sec  += depunc_stop.tv_sec  - depunc_start.tv_sec;
@@ -752,7 +786,7 @@ void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_ch
 		printf("\nINPUTS-TO-DO-DECODING:\n");
 		//for (int ti = 0; ti < (84 + MAX_ENCODED_BITS); ti ++) {
 		for (int ti = 0; ti < 72 + frame->n_encoded_bits; ti ++) {
-			printf("inMem %u = %u\n", ti, inMemory[ti]);
+//			printf("inMem %u = %u\n", ti, inMemory[ti]);
 		}
 		printf("LAST-INPUT\n\n\n");
 #endif
@@ -789,6 +823,7 @@ void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_ch
 #ifdef GENERATE_CHECK_VALUES
 	printf("LAST-OUTPUT\n\n");
 #endif
+	free(d_depuncture_pattern);
 	return;
 	}
 
@@ -811,38 +846,48 @@ void sdr_decode_ofdm(ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
                                         output, output_sz, inMemory, inMemory_sz, outMemory, outMemory_sz, "sdr_decode_start_task");
 #endif
 
-	printf("Inside sdr_decode_ofdm");
+	t_branchtab27 d_branchtab27_generic[2];
+
+	int d_k = 0;
+
+	ofdm_param *d_ofdm = ofdm;
+	frame_param *d_frame = frame;
+	unsigned char *d_depuncture_pattern;
+
+	uint8_t d_depunctured[MAX_ENCODED_BITS];
+
 	d_ofdm = ofdm;
 	d_frame = frame;
 
 	*n_dec_char = 0; // We don't return this from do_sdr_decoding -- but we could?
 
-	sdr_reset();
-	printf("Did sdr reset");
+	sdr_reset(d_branchtab27_generic, d_ofdm, d_ntraceback_arg, d_depuncture_pattern, &d_k);
 
-	DEBUG(printf("In sdr_decode : num_in_bits = %u (+ 10?)\n", frame->n_encoded_bits);
-			printf("DEC: OFDM  : %u %u %u %u %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
-			printf("DEC: FRAME : %u %u %u %u %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits));
+	//printf("Did sdr reset");
+
+	//DEBUG(printf("In sdr_decode : num_in_bits = %u (+ 10?)\n", frame->n_encoded_bits);
+//			printf("DEC: OFDM  : %u %u %u %u %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
+//			printf("DEC: FRAME : %u %u %u %u %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits));
 
 	//#define DUMP_DECODE_INPUTS
 #ifdef  DUMP_DECODE_INPUTS
 	{
-		printf("mnum mid\n");
-		printf("OFMD: bpsc %u cbps %u dbps %u enc %u rate %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
-		printf("FRAME: psdu %u nsym %u npad %u encb %u ndbts %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits);
+		//printf("mnum mid\n");
+		//printf("OFMD: bpsc %u cbps %u dbps %u enc %u rate %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
+		//printf("FRAME: psdu %u nsym %u npad %u encb %u ndbts %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits);
 		int num_in_bits = frame->n_encoded_bits + 10; // strlen(str3)+10; //additional 10 values
 		for (int ci = 0; ci < num_in_bits; ci++) {
-			printf("%u ", in[ci]);
+			//printf("%u ", in[ci]);
 		}
-		printf("\n");
+		//printf("\n");
 	}
 #endif
 
 #ifdef INT_TIME
 	gettimeofday(&depunc_start, NULL);
 #endif
-	uint8_t *depunctured = depuncture(in);
-	printf("Depuctured input");
+	uint8_t *depunctured = depuncture(in, d_ofdm, d_frame, d_depuncture_pattern, d_depunctured, *d_ntraceback_arg, d_k);
+	//printf("Depuctured input");
 #ifdef INT_TIME
 	gettimeofday(&depunc_stop, NULL);
 	depunc_sec  += depunc_stop.tv_sec  - depunc_start.tv_sec;
@@ -863,21 +908,21 @@ void sdr_decode_ofdm(ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 	//	uint8_t inMemory[24852];  // This is "minimally sized for max entries"
 	//	uint8_t outMemory[18585]; // This is "minimally sized for max entries"
 
-		printf("Starting for-loops over in-memory");
+		//printf("Starting for-loops over in-memory");
 		int imi = 0;
 		for (int ti = 0; ti < 2; ti ++) {
 			for (int tj = 0; tj < 32; tj++) {
 				inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
 			}
 		}
-		printf("First for-loop for in-memory");
+		//printf("First for-loop for in-memory");
 
 		if (imi != 64) { printf("ERROR : imi = %u and should be 64\n", imi); }
 		// imi = 64;
 		for (int ti = 0; ti < 6; ti ++) {
 			inMemory[imi++] = d_depuncture_pattern[ti];
 		}
-		printf("Second for-loop for in-memory");
+		//printf("Second for-loop for in-memory");
 		if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
 		// imi = 70
 		imi += 2; // Padding
@@ -886,7 +931,7 @@ void sdr_decode_ofdm(ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 		for (int ti = 0; ti < max_ins /*frame->n_encoded_bits*/ /*MAX_ENCODED_BITS*/; ti ++) {
 			inMemory[imi++] = depunctured[ti];
 		}
-		printf("Third for-loop for in-memory");
+		//printf("Third for-loop for in-memory");
 		//if (imi != 24852) { printf("ERROR : imi = %u and should be 24852\n", imi); }
 		DEBUG(printf("NOTE: imi = %u vs MAX %u\n", imi, MAX_ENCODED_BITS));
 		// imi = 24862 : OUTPUT ONLY -- DON'T NEED TO SEND INPUTS
@@ -895,27 +940,27 @@ void sdr_decode_ofdm(ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 		for (int ti = 0; ti < max_outs; ti ++) {
 			outMemory[ti] = 0;
 		}
-		printf("Fourth for-loop for in-memory");
+		//printf("Fourth for-loop for in-memory");
 
 #ifdef GENERATE_CHECK_VALUES
-		printf("\nINPUTS-TO-DO-DECODING:\n");
+		//printf("\nINPUTS-TO-DO-DECODING:\n");
 		//for (int ti = 0; ti < (84 + MAX_ENCODED_BITS); ti ++) {
 		for (int ti = 0; ti < 72 + frame->n_encoded_bits; ti ++) {
-			printf("inMem %u = %u\n", ti, inMemory[ti]);
+			//printf("inMem %u = %u\n", ti, inMemory[ti]);
 		}
-		printf("LAST-INPUT\n\n\n");
+		//printf("LAST-INPUT\n\n\n");
 #endif
 
 		// Call the do_sdr_decoding routine
 		//void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory)
 		printf("Calling do_sdr_decoding: data_bits %d  cbps %d ntraceback %d\n", frame->n_data_bits, ofdm->n_cbps, *d_ntraceback_arg);
-		printf("inMemory %p\n", inMemory);
-		printf("outnMemory %p\n", outMemory);
+//		printf("inMemory %p\n", inMemory);
+//		printf("outnMemory %p\n", outMemory);
 #ifdef INT_TIME
 		gettimeofday(&dodec_start, NULL);
 #endif
 		// Call the viterbi_butterfly2_generic function using ESP interface
-		DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback_arg));
+		DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, *d_ntraceback_arg));
 
 		printf("Done with T1\n");
 #if defined(HPVM) && defined(SDR_HPVM)

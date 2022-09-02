@@ -30,11 +30,10 @@
 #include "hetero.h"
 #endif
 
+#undef HPVM
 
-extern int d_frame_bytes;
-extern int d_frame_encoding;
-extern int d_frame_symbols;
-extern int d_frame_mod;
+//extern int d_frame_bytes;
+//extern int d_frame_encoding;
 
 #ifdef INT_TIME
 /* This is RECV-DECODE (SIGNAL) internal Timing information (gathering resources) */
@@ -130,19 +129,23 @@ void decode_signal_start_Wrapper(unsigned* num_inputs, size_t num_inputs_sz /*= 
 		DEBUG(printf("     at the call to our decode...\n"));
 		unsigned num_out_bits = *num_inputs/2; 			// for BPSK_1_2
 
-		ofdm->encoding =  d_frame_encoding; 			// encoding   : 0 = BPSK_1_2
+		ofdm->encoding =  0; //d_frame_encoding; 	  	// encoding   : 0 = BPSK_1_2
 		ofdm->rate_field = 13; 					// rate_field : rate field of SIGNAL header //Taken constant
 		ofdm->n_bpsc = 1;        				// n_bpsc     : coded bits per subcarrier
 		ofdm->n_cbps = 48;       				// n_cbps     : coded bits per OFDM symbol
 		ofdm->n_dbps = 24;     					// n_dbps     : data bits per OFDM symbol
 
-		frame->psdu_size = d_frame_bytes; 			// psdu_size      : PSDU size in bytes
+		frame->psdu_size = 0; //d_frame_bytes; 			// psdu_size      : PSDU size in bytes
+		// Not sure if the above assignment will lead to issues; psdu_size isn't really being used any where
+		// and I couldn't figure out where d_frame_bytes was getting updated. So, I am just initializing this variable
+		// to some constant value and trying to see how it works.
+		
 		frame->n_sym = (int)(num_sym);				// n_sym          : number of OFDM symbols
 		frame->n_pad = 18;					// n_pad          : number of padding bits in DATA field
 		frame->n_encoded_bits = (int)*num_inputs; //24528	// n_encoded_bits : number of encoded bits
 		frame->n_data_bits = (int)num_out_bits;   //12264	// n_data_bits    : number of data bits, including service and padding
-		DEBUG(printf("Calling decode with OFDM_PARMS %u %2u %u %2u %2u\n", ofdm->encoding, 13, ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps);
-				printf("               and FRAME_PARMS %4u %3u %2u %5u %5u\n",  frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits));
+		printf("Calling decode with OFDM_PARMS %u %2u %u %2u %2u\n", ofdm->encoding, 13, ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps);
+				printf("               and FRAME_PARMS %4u %3u %2u %5u %5u\n",  frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits);
 		/* DEBUG(printf("Calling decode : n_inputs = %u \n", num_inputs); */
 		/* 	  printf("OFDM : enc %u   rate %u  n_bpsc %u  n_cbps %u  n_dbps %u\n", ofdm->encoding, ofdm->rate_field, ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps); */
 		/* 	  printf("FRAME: psdu %u  n_sym %u  n_pad %u  n_encb %u  n_dtab %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits)); */

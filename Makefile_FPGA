@@ -1,21 +1,17 @@
-HPVMC=0
 SRC_DIR = src/
 BUILD_DIR = obj_hpvm/$(TARGET)$(VERSION)
-BUILD_DIR_PARENT = obj_hpvm
 #DEBUG = 1
 
 INCLUDES +=
 LFLAGS += -lm -lrt
 
-HPVM_SRC=main.c
-ALL_SRCS:= $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
-OTHER_SRCS:= $(filter-out $(HPVM_SRC),$(ALL_SRCS))
-
-$(info $$OTHER_SRCS is [${OTHER_SRCS}])
+HPVM_SRC=main.cc
+OTHER_SRCS:= $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+echo All files $(OTHER_SRCS)
 
 
-APP_CFLAGS += $(INCLUDES) -ffast-math -O1 -fno-lax-vector-conversions -fno-vectorize -fno-slp-vectorize -finline -finline-functions -DHPVM
-APP_CXXFLAGS += $(INCLUDES) -ffast-math -O1 -fno-lax-vector-conversions -fno-vectorize -fno-slp-vectorize -finline -finline-functions -DHPVM
+APP_CFLAGS += $(INCLUDES) -ffast-math -O1 -fno-lax-vector-conversions -fno-vectorize -fno-slp-vectorize -finline -finline-functions
+APP_CXXFLAGS += $(INCLUDES) -ffast-math -O1 -fno-lax-vector-conversions -fno-vectorize -fno-slp-vectorize -finline -finline-functions
 APP_LDFLAGS= $(LFLAGS)
 
 # These paths should be set to your local directories of CUDA and OpenCL
@@ -29,8 +25,10 @@ LLVM_BUILD_DIR=$(HPVM_BUILD_DIR)
 
 INCDIR += -I./include -I./soc_utils -I$(SCHED_LIB_DIR)/include -I$(TASK_LIB_DIR)/include -I/usr/include/python3.6m
 CC = $(LLVM_BUILD_DIR)/bin/clang
+PLATFORM_CFLAGS = -I$(OPENCL_PATH)/include/CL/ -DDEVICE=$(DEVICE) -D$(DDEF) $(INCDIR)
 
 CXX = $(LLVM_BUILD_DIR)/bin/clang++
+PLATFORM_CXXFLAGS = -I$(OPENCL_PATH)/include/CL/ -DDEVICE=$(DEVICE) -D$(DDEF) $(INCDIR)
 
 LINKER = $(LLVM_BUILD_DIR)/bin/clang++
 PLATFORM_LDFLAGS = -lm -lpthread -lrt -lOpenCL -L$(OPENCL_LIB_PATH)
@@ -51,7 +49,7 @@ HPVM_RT_LIB = $(HPVM_RT_PATH)/hpvm-rt.bc
 HPVM-CC=$(LLVM_BIN_PATH)/hpvm-cc
 HCC=$(LLVM_BIN_PATH)/hcc
 
-HCC-OPTS := -dot-dfg
+HCC-OPTS :=
 HPVM-CGEN-PATH=$(LLVM_BUILD_DIR)/tools/hpvm/projects/hetero-c++/
 HPVM-CGEN-DECLS-FILE=./soc_utils/HPVMCFunctionDeclarations.ll
 HCC-OPTS := $(HCC-OPTS) -declsfile $(HPVM-CGEN-DECLS-FILE) -sanitise-funcs
@@ -81,14 +79,6 @@ else ifeq ($(TARGET),gpu)
   HPVM_OPTSO = -load HPVMBuildDFG.so -load HPVMLocalMem.so -load HPVMDFG2LLVM_GPU_OCL.so -load HPVMDFG2LLVM_CPU.so -load HPVMClearDFG.so
   HPVM_OPTFLAGS =  -localmem -dfg2llvm-gpu-ocl -dfg2llvm-cpu -clearDFG -hpvm-timers-cpu -hpvm-timers-ptx
 endif
-
-$(info $$DDEF is [${DDEF}])
-$(info $$DEVICE is [${DEVICE}])
-$(info $$TARGET is [${TARGET}])
-
-PLATFORM_CFLAGS = -I$(OPENCL_PATH)/include/CL/ $(INCDIR) -DDEVICE=$(DEVICE) -D$(DDEF)
-PLATFORM_CXXFLAGS = -I$(OPENCL_PATH)/include/CL/ $(INCDIR) -DDEVICE=$(DEVICE) -D$(DDEF) 
-$(info $$PLATFORM_CXXFLAGS is [${PLATFORM_CXXFLAGS}])
 
 ifeq ($(BASELINE),1)
 	FPGA_OPTFLAGS += --baseline
@@ -176,8 +166,13 @@ CFLAGS = $(APP_CFLAGS) $(PLATFORM_CFLAGS)
 CXXFLAGS = $(APP_CXXFLAGS) $(PLATFORM_CXXFLAGS)
 LDFLAGS= $(APP_LDFLAGS) $(PLATFORM_LDFLAGS)
 
-COMP = $(CXX)
-OMP_FLAGS = $(CFLAGS)
+ifeq ($(suffix $(HPVM_SRC)), .c)
+  COMP = $(CC)
+  COMP_FLAGS = $(CFLAGS)
+else
+  COMP = $(CXX)
+  COMP_FLAGS = $(CXXFLAGS)
+endif
 
 # Add BUILDDIR as a prefix to each element of $1
 INBUILDDIR=$(addprefix $(BUILD_DIR)/,$(1))
@@ -185,9 +180,7 @@ INSRCDIR=$(addprefix $(SRC_DIR)/,$(1))
 
 .PRECIOUS: $(BUILD_DIR)/%.ll $(BUILD_DIR)/%.bc
 
-SRCDIR_LLVM=$(addsuffix .ll, $(foreach f, $(ALL_SRCS), $(BUILD_DIR)/$(basename $(f))))
-$(info $$SRCDIR_LLVM is [${SRCDIR_LLVM}])
-
+SRCDIR_OBJS=$(addsuffix .ll, $(basename $(OTHER_SRCS)))
 HPVM_OBJS=$(basename hpvm).ll
 
 PRE_HCC = $(call INBUILDDIR,$(basename hpvm)-task.bc)
@@ -216,9 +209,7 @@ else ifeq ($(TARGET),fpga)
   endif
 endif
 
-EXE = ERAhpvm_$(TARGET)
 HOST_LINKED = $(BUILD_DIR)/$(EXE).linked.ll
-LLVM_LINKED_HCC_INPUT = $(BUILD_DIR)/hpvm_task.ll
 
 # Targets
 default: $(BUILD_DIR) $(EXE) $(KERNEL_OCL)
@@ -236,19 +227,19 @@ default: FPGA_OPTFLAGS += -run-aoc
 clean :
 	if [ -f $(EXE) ]; then rm $(EXE); fi
 	if [ -f DataflowGraph.dot ]; then rm DataflowGraph.dot*; fi
-	if [ -d $(BUILD_DIR_PARENT) ]; then rm -rf $(BUILD_DIR_PARENT); fi
-	$(RM) *.dot
-	$(RM) *.xml
+	if [ -d $(BUILD_DIR) ]; then rm -rf $(BUILD_DIR); fi
 
 $(EXE) : $(HOST_LINKED)
-	$(info Building ${EXE} from ${HOST_LINKED})
-	$(COMP) -O1 $(LDFLAGS) $< -o $@ -L/usr/lib/python3.6/config-3.6m-x86_64-linux-gnu -L/usr/lib -lpython3.6m -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions
+	$(CXX) -O3 $(LDFLAGS) $< -o $@
 
 $(HOST_LINKED) : $(HOST) $(OBJS) $(HPVM_RT_LIB)
 	$(LLVM_LINK) $^ -S -o $@
 
 ifneq ($(HPVMC),1)
-$(POST_HCC): $(LLVM_LINKED_HCC_INPUT)
+$(PRE_HCC): $(call INSRCDIR,$(HPVM_SRC))
+	$(COMP) $(COMP_FLAGS) -emit-llvm -c -o $@ $<
+
+$(POST_HCC): $(PRE_HCC)
 	$(HCC) $(HCC-OPTS) -o $@ $<
 else
 $(POST_HCC): $(call INSRCDIR,$(HPVM_SRC))
@@ -272,6 +263,3 @@ $(BUILD_DIR)/%.ll : $(SRC_DIR)/%.cpp
 
 $(BUILD_DIR)/%.ll : $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -emit-llvm -S -o $@ $<
-
-$(LLVM_LINKED_HCC_INPUT) : $(SRCDIR_LLVM)
-	$(LLVM_LINK) $^ -S -o $@

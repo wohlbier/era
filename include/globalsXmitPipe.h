@@ -71,3 +71,53 @@ extern struct timeval x_ocycpref_stop, x_ocycpref_start;
 extern uint64_t x_ocycpref_sec;
 extern uint64_t x_ocycpref_usec;
 
+extern uint8_t d_psdu_org[MAX_PSDU_SIZE];
+
+extern uint8_t d_map_out_copy_org[32768];
+
+extern uint16_t d_seq_nr_org; 
+extern uint8_t d_scrambler_org; 
+extern char d_symbols_org[24528]; 
+extern int d_symbols_offset_org; 
+extern int d_symbols_len_org; 
+
+
+extern ofdm_param d_ofdm_org; 
+extern frame_param d_frame_org; 
+
+#define d_num_pilot_carriers 1
+#define d_size_pilot_carriers_val 4
+extern int d_pilot_carriers_org[d_num_pilot_carriers][d_size_pilot_carriers_val]; /* = {
+	{
+		-21, -7, 7, 21
+	}
+};*/
+
+#define d_num_occupied_carriers 1
+#define d_size_occupied_carriers 48
+extern int d_occupied_carriers_org[d_num_occupied_carriers][d_size_occupied_carriers]; /* = {
+        {
+                -26, -25, -24, -23, -22, -20, -19, -18, //  8
+                -17, -16, -15, -14, -13, -12, -11, -10, // 16
+                -9, -8, -6, -5, -4, -3, -2, -1, // 24
+                1, 2, 3, 4, 5, 6, 8, 9, // 32
+                10, 11, 12, 13, 14, 15, 16, 17, // 40
+                18, 19, 20, 22, 23, 24, 25, 26
+        }
+}; // 48*/
+
+extern size_t d_psdu_org_size; // = MAX_PSDU_SIZE;
+extern size_t d_map_out_org_size; // = 32768;
+
+extern size_t d_seq_nr_org_sz; // = sizeof(uint16_t);
+extern size_t d_scrambler_org_sz; // = sizeof(uint8_t);
+extern size_t d_symbols_org_sz; // = 24528;
+extern size_t d_symbols_offset_org_sz; // = sizeof(int);
+extern size_t d_symbols_len_org_sz; // = sizeof(int);
+
+extern size_t d_ofdm_org_sz; // = sizeof(ofdm_param);
+extern size_t d_frame_org_sz; // = sizeof(frame_param);
+
+extern size_t d_pilot_carriers_org_sz; // = d_num_pilot_carriers*d_size_pilot_carriers_val*sizeof(int);
+extern size_t d_occupied_carriers_org_sz; // = d_num_occupied_carriers*d_size_occupied_carriers*sizeof(int);
+

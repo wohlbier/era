@@ -31,24 +31,10 @@ typedef float fx_pt1_ext2;
 typedef float complex fx_pt_ext1;
 typedef float complex fx_pt_ext2;
 
-const fx_pt LONG_ref[] = { 0 ,  0,  0,  0,  0,  0,  1,  1, -1, -1,
-			   1 ,  1, -1,  1, -1,  1,  1,  1,  1,  1,
-			   1 , -1, -1,  1,  1, -1,  1, -1,  1,  1,
-			   1 ,  1,  0,  1, -1, -1,  1,  1, -1,  1,
-			   -1,  1, -1, -1, -1, -1, -1,  1,  1, -1,
-			   -1,  1, -1,  1, -1,  1,  1,  1,  1,  0,
-			   0 ,  0,  0,  0 };
+//double d_snr;
 
-double d_snr;
 
-const int interleaver_pattern[48] = {  0 , 3, 6, 9,12,15,18,21,
-				       24,27,30,33,36,39,42,45,
-				       1 , 4, 7,10,13,16,19,22,
-				       25,28,31,34,37,40,43,46,
-				       2 , 5, 8,11,14,17,20,23,
-				       26,29,32,35,38,41,44,47};
-
-int d_frame_bytes;
+//int d_frame_bytes;
 int d_frame_encoding;
 int d_frame_symbols;
 int d_frame_mod;
@@ -114,6 +100,12 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   for(int ii = 0; ii < 128; ii++) {
     d_deinterleaved[ii] = 0;
   }
+const int interleaver_pattern[48] = {  0 , 3, 6, 9,12,15,18,21,
+				       24,27,30,33,36,39,42,45,
+				       1 , 4, 7,10,13,16,19,22,
+				       25,28,31,34,37,40,43,46,
+				       2 , 5, 8,11,14,17,20,23,
+				       26,29,32,35,38,41,44,47};
   for(int ii = 0; ii < 48; ii++) {
     DEBUG(printf("DSF: Setting d_deintlvd[%u] = rx_bits[%u] = %u\n", ii, interleaver_pattern[ii], rx_bits[interleaver_pattern[ii]]));
     d_deinterleaved[ii] = rx_bits[interleaver_pattern[ii]];
@@ -134,7 +126,7 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
 
   DEBUG(printf("\nDSF: Starting analysis...\n"));
   int r = 0;
-  d_frame_bytes = 0;
+  int d_frame_bytes = 0;
   bool parity = false;
   for(int i = 0; i < 17; i++) {
     parity ^= decoded_bits[i];
@@ -151,7 +143,7 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   }
 
   if (parity != decoded_bits[17]) {
-    printf("SIGNAL: wrong parity %u vs %u -- bad message!\n", parity, decoded_bits[17]);  fflush(stdout);
+	// printf("SIGNAL: wrong parity %u vs %u -- bad message!\n", parity, decoded_bits[17]);  fflush(stdout);
    #ifdef INT_TIME
     gettimeofday(&reql_decSF_stop, NULL);
     reql_decSF_sec  += reql_decSF_stop.tv_sec  - reql_decSF_start.tv_sec;
@@ -257,6 +249,14 @@ fx_pt d_H[64];
 //void do_LS_equalize(fx_pt in[64], unsigned n, fx_pt symbols[48], fx_pt* output)  // BPSK , d_frame_mod)
 static inline void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bits) // BPSK , boost::shared_ptr<gr::digital::constellation> mod) {
 {
+const fx_pt LONG_ref[] = { 0 ,  0,  0,  0,  0,  0,  1,  1, -1, -1,
+			   1 ,  1, -1,  1, -1,  1,  1,  1,  1,  1,
+			   1 , -1, -1,  1,  1, -1,  1, -1,  1,  1,
+			   1 ,  1,  0,  1, -1, -1,  1,  1, -1,  1,
+			   -1,  1, -1, -1, -1, -1, -1,  1,  1, -1,
+			   -1,  1, -1,  1, -1,  1,  1,  1,  1,  0,
+			   0 ,  0,  0,  0 };
+
   if(n == 0) {
     for (int ii = 0; ii < 64; ii++) {
       d_H[ii] = in[ii];
@@ -273,7 +273,7 @@ static inline void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bit
       d_H[i] += in[i];
       d_H[i] /= LONG_ref[i] * (fx_pt)(2 + 0 * I);
     }
-    d_snr = 10 * log10(signal / noise / 2);
+    double d_snr = 10 * log10(signal / noise / 2);
   } else {
     int c = 0;
     for(int ii = 0; ii < 64; ii++) {

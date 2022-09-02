@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #ifndef _XMIT_PIPE_H
 #define _XMIT_PIPE_H
 
@@ -108,7 +109,18 @@ void do_xmit_pipeline(int* in_msg_len, size_t in_msg_len_sz,  char * in_msg, siz
         float * fft_out_real /*local*/ , size_t fft_out_real_sz /*= ofdm_max_out_size*/ ,
         float * fft_out_imag /*local*/ , size_t fft_out_imag_sz /*= ofdm_max_out_size*/ ,
         float * cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/ ,
-        float * cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/
+        float * cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/,
+	int* d_occupied_carriers, size_t d_occupied_carriers_sz,
+	uint8_t * d_psdu, size_t d_psdu_size,
+	uint8_t * d_map_out, size_t d_map_out_size,
+	uint16_t * d_seq_nr, size_t d_seq_nr_sz/*=sizeof(uint16_t)*/,
+        uint8_t * d_scrambler, size_t d_scrambler_sz,
+        char* d_symbols, size_t d_symbols_sz,
+        int* d_symbols_offset, size_t d_symbols_offset_sz,
+        int* d_symbols_len, size_t d_symbols_len_sz,
+	ofdm_param * d_ofdm, size_t d_ofdm_sz,
+        frame_param * d_frame, size_t d_frame_sz,
+	int* d_pilot_carriers, size_t d_pilot_carriers_sz
         // End of local variables used by do_xmit_pipeline
          );
 //#else
@@ -117,7 +129,7 @@ void do_xmit_pipeline(int* in_msg_len, size_t in_msg_len_sz,  char * in_msg, siz
 //#endif
 
 
-void generate_mac_data_frame(const char *msdu, int msdu_size, /*char **psdu,*/ int *psdu_size /*, char seq*/);
+void generate_mac_data_frame(const char *msdu, int msdu_size, /*char **psdu,*/ int *psdu_size /*, char seq*/, uint8_t * d_psdu, size_t d_psdu_size, uint16_t * d_seq_nr, size_t d_seq_nr_sz);
 
 void scramble(const char *input, char *out, frame_param *frame, char initial_state);
 
@@ -135,4 +147,3 @@ void generate_bits(const char *psdu, char *data_bits, frame_param *frame);
 
 
 #endif
-

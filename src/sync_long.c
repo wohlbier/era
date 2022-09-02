@@ -196,7 +196,7 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
 	});
 
   if ( num_inputs < SYNC_LENGTH) {
-    printf("ERROR : num_inputs = %u which is less than SYNC_LENGTH %u\n", num_inputs, SYNC_LENGTH);
+    //printf("ERROR : num_inputs = %u which is less than SYNC_LENGTH %u\n", num_inputs, SYNC_LENGTH);
     exit(-6);
   }
     
@@ -307,7 +307,7 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
     d_offset_ui++;
     // This appears to state we should take the first 128 samples, then repeatedly skip 16 and take the next (80-16 = 64)
     if( (rel >= 0) && ((rel < 128) || (((rel - 128) % 80) > 15)) ) {
-      fx_pt_ext2 esp = (fx_pt_ext2)( cosf(d_freq_offset*d_offset_ui) + I * sinf(d_freq_offset*d_offset_ui));
+      fx_pt_ext2 esp = (fx_pt_ext2)( cos(d_freq_offset*d_offset_ui) + I * sin(d_freq_offset*d_offset_ui));
       fx_pt_ext2 num = (fx_pt_ext2)(input[i]);
       fx_pt_ext2 dsampl= esp*num;
       output[out_idx] = (fx_pt)dsampl;

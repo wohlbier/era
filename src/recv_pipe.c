@@ -43,6 +43,10 @@
 #include "recv_pipe.h"
 
 //#define PARALLEL_LOOP
+//
+//
+
+#undef HPVM // TODO: REMOVE ME
 
 #if defined(HPVM)
 #include "hpvm.h"
@@ -336,7 +340,7 @@ recv_pipe_init() {
 }
 
 
-void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/, 
+__attribute__ ((noinline)) void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/, 
 		fx_pt1* fft_ar_i, size_t fft_ar_i_sz /*= FRAME_EQ_IN_MAX_SIZE*/, 
 		unsigned* num_sync_long_vals, size_t num_sync_long_vals_sz /*= sizeof(unsigned)*/,
 		unsigned* returnValue, size_t returnValue_sz /*= sizeof(unsigned)*/,
@@ -345,20 +349,10 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 #if defined(HPVM) 
 	void* Section = __hetero_section_begin();
 
-	void* wrapper = __hetero_task_begin(5, fft_ar_r, fft_ar_r_sz, fft_ar_i, fft_ar_i_sz, 
-			num_sync_long_vals, num_sync_long_vals_sz,
-			returnValue, returnValue_sz, 
-			num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
-			5, fft_ar_r, fft_ar_r_sz, fft_ar_i, fft_ar_i_sz,
-			num_sync_long_vals, num_sync_long_vals_sz,
-			returnValue, returnValue_sz,
-			num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz, "wrapper_task");
-	printf("hello");
-	__hetero_task_end(wrapper);
-
 	void* T1 = __hetero_task_begin(1, num_sync_long_vals, num_sync_long_vals_sz, 
 			1, num_sync_long_vals, num_sync_long_vals_sz, 
 			"detect_early_exit_task");
+	__hpvm__hint(DEVICE);
 #endif
 	DEBUG(printf("\nSetting up for FFT...\n"));
 	// FFT
@@ -366,7 +360,7 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 
 	unsigned num_fft_frames = ((*num_sync_long_vals) + 63) / 64;
 	if (num_fft_frames > MAX_FFT_FRAMES) {
-		printf("ERROR : FFT generated %u frames which exceeds current MAX_FFT_FRAMES %u\n", num_fft_frames, MAX_FFT_FRAMES);
+		//printf("ERROR : FFT generated %u frames which exceeds current MAX_FFT_FRAMES %u\n", num_fft_frames, MAX_FFT_FRAMES);
 		exit(-7);
 	}
 #if defined(HPVM) 
@@ -384,6 +378,7 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 			num_sync_long_vals, num_sync_long_vals_sz,
 			num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
 			returnValue, returnValue_sz, "recv_hw_fft_task");
+	__hpvm__hint(DEVICE);
 #endif
 	{
 
@@ -399,7 +394,7 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 		// Now we call the init_recv_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
 		const uint32_t fn = 0;
 		const uint32_t scale_factor = 1;
-		printf("Calling init_recv_fft_parms fn %u lgn %u nfft %u inv %u shft %u\n", fn, log_nsamples, num_fft_frames, do_inverse, do_shift, scale_factor);
+		//printf("Calling init_recv_fft_parms fn %u lgn %u nfft %u inv %u shft %u\n", fn, log_nsamples, num_fft_frames, do_inverse, do_shift, scale_factor);
 		init_recv_fft_parameters(fn, log_nsamples, num_fft_frames, do_inverse, do_shift, scale_factor);
 
 #ifdef INT_TIME
@@ -477,7 +472,9 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 			num_sync_long_vals, num_sync_long_vals_sz,
 			num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
 			"fft_ri_for_loop_wrappertask");
-
+#if !defined(PARALLEL_LOOP)
+			__hpvm__hint(DEVICE); 
+#endif
 #if defined(PARALLEL_LOOP)
 	void* Section_Loop = __hetero_section_begin();
 #endif
@@ -496,6 +493,7 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 						num_sync_long_vals, num_sync_long_vals_sz, 
 						num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz, 
 						"fft_ri_task_loop");
+			__hpvm__hint(DEVICE); 
 #endif
 
 			unsigned num_fft_frames = ((*num_sync_long_vals) + 63) / 64;
@@ -600,7 +598,7 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
  * This routine manages the transmit pipeline functions and components
  ********************************************************************************/
 
-void pre_process_input_for_compute(float * recvd_in_imag, size_t recvd_in_imag_sz,
+__attribute__ ((noinline)) void pre_process_input_for_compute(float * recvd_in_imag, size_t recvd_in_imag_sz,
 		float * recvd_in_real, size_t recvd_in_real_sz,
 		int num_recvd_vals,
 		fx_pt * input_data_arg /*= input_data -> global*/, size_t input_data_arg_sz /*=DELAY_16_MAX_OUT_SIZE - 16*/
@@ -612,12 +610,17 @@ void pre_process_input_for_compute(float * recvd_in_imag, size_t recvd_in_imag_s
 			recvd_in_imag, recvd_in_imag_sz,
 			num_recvd_vals,
 			1, input_data_arg, input_data_arg_sz, "process_input_to_compute_task");
+	__hpvm__hint(DEVICE);
 #endif
+#if !defined(HPVM)
 	DEBUG(printf("In do_recv_pipeline: num_received_vals = %u\n", num_recvd_vals); fflush(stdout));
+#endif
 	for (int i = 0; i < num_recvd_vals; i++) { // TODO: HPVM: Parallelize this loop
 		input_data_arg[i] = recvd_in_real[i] + I * recvd_in_imag[i];
 	}
+#if !defined(HPVM)
 	DEBUG(printf("Calling compute\n"));
+#endif
 
 #if defined(HPVM) && true
 	__hetero_task_end(T0);
@@ -625,7 +628,7 @@ void pre_process_input_for_compute(float * recvd_in_imag, size_t recvd_in_imag_s
 #endif
 }
 
-void pre_process_input_for_compute_Wrapper2(float * recvd_in_imag, size_t recvd_in_imag_sz,
+__attribute__ ((noinline)) void pre_process_input_for_compute_Wrapper2(float * recvd_in_imag, size_t recvd_in_imag_sz,
 		float * recvd_in_real, size_t recvd_in_real_sz,
 		int num_recvd_vals,
 		fx_pt * input_data_arg /*= input_data -> global*/, size_t input_data_arg_sz /*=DELAY_16_MAX_OUT_SIZE - 16*/
@@ -647,7 +650,7 @@ void pre_process_input_for_compute_Wrapper2(float * recvd_in_imag, size_t recvd_
 #endif
 }
 
-void pre_process_input_for_compute_Wrapper3(float * recvd_in_imag, size_t recvd_in_imag_sz,
+__attribute__ ((noinline)) void pre_process_input_for_compute_Wrapper3(float * recvd_in_imag, size_t recvd_in_imag_sz,
 		float * recvd_in_real, size_t recvd_in_real_sz,
 		int num_recvd_vals,
 		fx_pt * input_data_arg /*= input_data -> global*/, size_t input_data_arg_sz /*=DELAY_16_MAX_OUT_SIZE - 16*/
@@ -847,7 +850,8 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 #endif
 		}
 
-void do_rcv_fft_work_Wrapper(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+
+__attribute__ ((noinline)) void do_rcv_fft_work_Wrapper(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
 				fx_pt1* fft_ar_i, size_t fft_ar_i_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
 				unsigned* num_sync_long_vals, size_t num_sync_long_vals_sz /*= sizeof(unsigned)*/,
 				unsigned* num_fft_outs, size_t num_fft_outs_sz /*= sizeof(unsigned)*/,
@@ -863,8 +867,8 @@ void do_rcv_fft_work_Wrapper(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_I
 #endif
 
 #if !defined(HPVM)
-				DO_NUM_IOS_ANALYSIS(printf("Calling FFT_COMP : num_fft_frames = %u / 64 = %u So %u values\n",
-							*num_sync_long_vals, num_fft_frames, (num_fft_frames * 64)));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling FFT_COMP : num_fft_frames = %u / 64 = %u So %u values\n",
+				//			*num_sync_long_vals, num_fft_frames, (num_fft_frames * 64)));
 #ifdef INT_TIME
 				gettimeofday(&r_fft_start, NULL);
 				r_slong_sec += r_fft_start.tv_sec - r_slong_start.tv_sec;
@@ -890,11 +894,12 @@ void do_rcv_fft_work_Wrapper(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_I
 			}
 
 
-void logging_Wrapper(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz) {
+__attribute__ ((noinline)) void logging_Wrapper(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz) {
 #if defined(HPVM) && true
 			void* Section = __hetero_section_begin();
 			void* T = __hetero_task_begin(2, num_inputs, input_data_arg, input_data_arg_sz,
 					1, input_data_arg, input_data_arg_sz, "logging_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 				// uint8_t scrambled_msg[MAX_ENCODED_BITS * 3 / 4];
 				DEBUG(for (int ti = 0; ti < num_inputs /*RAW_DATA_IN_MAX_SIZE*/; ti++) {
@@ -902,7 +907,7 @@ void logging_Wrapper(unsigned num_inputs, fx_pt * input_data_arg, size_t input_d
 						});
 
 				unsigned num_del16_vals = num_inputs + 16;
-				DO_NUM_IOS_ANALYSIS(printf("Calling delay IN %u OUT %u\n", num_inputs, num_del16_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling delay IN %u OUT %u\n", num_inputs, num_del16_vals));
 				// We don't need to make this call now -- we've done the effect in the memory array already
 				// delay(delay16_out, num_inputs, input_data_arg);  
 				DEBUG(for (int ti = 0; ti < num_del16_vals; ti++) {
@@ -915,7 +920,7 @@ void logging_Wrapper(unsigned num_inputs, fx_pt * input_data_arg, size_t input_d
 #endif
 }
 
-void logging_Wrapper2(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz) {
+__attribute__((noinline)) void logging_Wrapper2(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz) {
 #if defined(HPVM) && true
 			void* Section = __hetero_section_begin();
 			void* T = __hetero_task_begin(2, num_inputs, input_data_arg, input_data_arg_sz,
@@ -929,7 +934,7 @@ void logging_Wrapper2(unsigned num_inputs, fx_pt * input_data_arg, size_t input_
 }
 
 
-void cmplx_conj_Wrapper(unsigned num_inputs, 
+__attribute__ ((noinline)) void cmplx_conj_Wrapper(unsigned num_inputs, 
 		fx_pt * cmpx_conj_out_arg, size_t cmpx_conj_out_arg_sz /*= CMP_CONJ_MAX_SIZE*/,
 		fx_pt * delay16_out_arg, size_t delay16_out_arg_sz /*= DELAY_16_MAX_OUT_SIZE*/) {
 #if defined(HPVM) 
@@ -937,12 +942,13 @@ void cmplx_conj_Wrapper(unsigned num_inputs,
 			void * T1 = __hetero_task_begin(3, num_inputs, cmpx_conj_out_arg, cmpx_conj_out_arg_sz,
 					delay16_out_arg, delay16_out_arg_sz,
 					1, cmpx_conj_out_arg, cmpx_conj_out_arg_sz, "cmplx_conj_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 
 			{
 				unsigned num_del16_vals = num_inputs + 16;
 				unsigned num_cconj_vals = num_del16_vals;
-				DO_NUM_IOS_ANALYSIS(printf("Calling complex_conjugate: IN %u OUT %u\n", num_del16_vals, num_cconj_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling complex_conjugate: IN %u OUT %u\n", num_del16_vals, num_cconj_vals));
 #ifdef INT_TIME
 				gettimeofday(&r_cmpcnj_start, NULL);
 #endif
@@ -959,7 +965,7 @@ void cmplx_conj_Wrapper(unsigned num_inputs,
 #endif
 }
 
-void cmplx_conj_Wrapper2(unsigned num_inputs, 
+__attribute__((noinline)) void cmplx_conj_Wrapper2(unsigned num_inputs, 
 		fx_pt * cmpx_conj_out_arg, size_t cmpx_conj_out_arg_sz /*= CMP_CONJ_MAX_SIZE*/,
 		fx_pt * delay16_out_arg, size_t delay16_out_arg_sz /*= DELAY_16_MAX_OUT_SIZE*/) {
 #if defined(HPVM) 
@@ -978,7 +984,7 @@ void cmplx_conj_Wrapper2(unsigned num_inputs,
 }
 
 
-void cmplx_mult_Wrapper(fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz /*= CMP_MULT_MAX_SIZE*/,
+__attribute__ ((noinline)) void cmplx_mult_Wrapper(fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz /*= CMP_MULT_MAX_SIZE*/,
 		fx_pt * cmpx_conj_out_arg, size_t cmpx_conj_out_arg_sz /*= CMP_CONJ_MAX_SIZE*/, 
 		unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz) {
 
@@ -988,12 +994,13 @@ void cmplx_mult_Wrapper(fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz /
 					cmpx_conj_out_arg, cmpx_conj_out_arg_sz, num_inputs,
 					input_data_arg, input_data_arg_sz,
 					1, cmpx_mult_out_arg, cmpx_mult_out_arg_sz, "cmplx_mult_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 			{
 				unsigned num_del16_vals = num_inputs + 16;
 				// TODO: I think num_cconj_vals and num_del16_vals are identitcal as complex_conjugate (prior task) doesn't modify it; relying on that assumption, I am num_cmult_vals defined in this manner
 				unsigned num_cmult_vals = num_del16_vals; //num_cconj_vals; 
-				DO_NUM_IOS_ANALYSIS(printf("Calling complex_mult: IN %u OUT %u\n", num_del16_vals, num_cmult_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling complex_mult: IN %u OUT %u\n", num_del16_vals, num_cmult_vals));
 
 #ifdef INT_TIME
 				gettimeofday(&r_cmpmpy_start, NULL);
@@ -1013,7 +1020,7 @@ void cmplx_mult_Wrapper(fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz /
 #endif
 }
 
-void cmplx_mult_Wrapper2(fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz /*= CMP_MULT_MAX_SIZE*/,
+__attribute__((noinline))  void cmplx_mult_Wrapper2(fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz /*= CMP_MULT_MAX_SIZE*/,
 		fx_pt * cmpx_conj_out_arg, size_t cmpx_conj_out_arg_sz /*= CMP_CONJ_MAX_SIZE*/, 
 		unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz) {
 
@@ -1034,19 +1041,20 @@ void cmplx_mult_Wrapper2(fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz 
 }
 
 
-void ffirc_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
+__attribute__ ((noinline)) void ffirc_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
 		fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz /*= CMP_MULT_MAX_SIZE*/, unsigned num_inputs) {
 #if defined(HPVM) 
 			void* Section = __hetero_section_begin();
 			void * T = __hetero_task_begin(3, correlation_complex_arg, correlation_complex_arg_sz,
 					cmpx_mult_out_arg, cmpx_mult_out_arg_sz, num_inputs,
 					1, correlation_complex_arg, correlation_complex_arg_sz, "ffirc_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 			{
 				unsigned num_del16_vals = num_inputs + 16;
 				// TODO: I think num_cmult_vals and num_del16_vals are identitcal as prior tasks don't modify it; relying on that assumption, I am num_cmult_vals defined in this manner
 				unsigned num_cmpcorr_vals = num_del16_vals;
-				DO_NUM_IOS_ANALYSIS(printf("Calling firc (Moving Average 48) : IN %u OUT %u\n", num_del16_vals, num_cmpcorr_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling firc (Moving Average 48) : IN %u OUT %u\n", num_del16_vals, num_cmpcorr_vals));
 
 #ifdef INT_TIME
 				gettimeofday(&r_firc_start, NULL);
@@ -1068,7 +1076,7 @@ void ffirc_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_complex_a
 #endif
 }
 
-void ffirc_Wrapper2(fx_pt * correlation_complex_arg, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
+__attribute__((noinline))  void ffirc_Wrapper2(fx_pt * correlation_complex_arg, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
 		fx_pt * cmpx_mult_out_arg, size_t cmpx_mult_out_arg_sz /*= CMP_MULT_MAX_SIZE*/, unsigned num_inputs) {
 #if defined(HPVM) 
 			void* Section = __hetero_section_begin();
@@ -1085,7 +1093,7 @@ void ffirc_Wrapper2(fx_pt * correlation_complex_arg, size_t correlation_complex_
 }
 
 
-void cmplx_mag_Wrapper(fx_pt1 * correlation_arg /*= correlation -> global*/, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
+__attribute__ ((noinline)) void cmplx_mag_Wrapper(fx_pt1 * correlation_arg /*= correlation -> global*/, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
 		unsigned num_inputs,
 		fx_pt * correlation_complex_arg /*= correlation_complex -> global*/, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/) {
 #if defined(HPVM) 
@@ -1093,12 +1101,13 @@ void cmplx_mag_Wrapper(fx_pt1 * correlation_arg /*= correlation -> global*/, siz
 			void * T = __hetero_task_begin(3, correlation_arg, correlation_arg_sz, num_inputs,
 					correlation_complex_arg, correlation_complex_arg_sz,
 					1, correlation_arg, correlation_arg_sz, "cmplx_mag_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 			{
 				unsigned num_del16_vals = num_inputs + 16;
 				// TODO: I think num_cmpcorr_vals and num_del16_vals are identitcal as prior tasks don't modify it; relying on that assumption, I am num_cmult_vals defined in this manner
 				unsigned num_cmag_vals = num_del16_vals; //num_cmpcorr_vals;
-				DO_NUM_IOS_ANALYSIS(printf("Calling complex_to_magnitude: IN %u OUT %u\n", num_del16_vals, num_cmag_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling complex_to_magnitude: IN %u OUT %u\n", num_del16_vals, num_cmag_vals));
 
 
 #ifdef INT_TIME
@@ -1119,7 +1128,7 @@ void cmplx_mag_Wrapper(fx_pt1 * correlation_arg /*= correlation -> global*/, siz
 #endif
 }
 
-void cmplx_mag_Wrapper2(fx_pt1 * correlation_arg /*= correlation -> global*/, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
+__attribute__((noinline))  void cmplx_mag_Wrapper2(fx_pt1 * correlation_arg /*= correlation -> global*/, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
 		unsigned num_inputs,
 		fx_pt * correlation_complex_arg /*= correlation_complex -> global*/, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/) {
 #if defined(HPVM) 
@@ -1138,17 +1147,19 @@ void cmplx_mag_Wrapper2(fx_pt1 * correlation_arg /*= correlation -> global*/, si
 }
 
 
-void cmplx_mag2_Wrapper(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/, 
+#if false
+__attribute__ ((noinline)) void cmplx_mag2_Wrapper(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/, 
 			unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz) {
 #if defined(HPVM) 
 	void* Section = __hetero_section_begin();
 			void * T = __hetero_task_begin(3, signal_power_arg, signal_power_arg_sz, num_inputs,
 					input_data_arg, input_data_arg_sz,
 					1, signal_power_arg, signal_power_arg_sz, "cmplx_mag2_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 			{
 				unsigned num_cmag2_vals = num_inputs;
-				DO_NUM_IOS_ANALYSIS(printf("Calling complex_to_mag_squared (signal_power): IN %u OUT %u\n", num_inputs, num_cmag2_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling complex_to_mag_squared (signal_power): IN %u OUT %u\n", num_inputs, num_cmag2_vals));
 #ifdef INT_TIME
 				gettimeofday(&r_cmpmag2_start, NULL);
 				r_cmpmag_sec += r_cmpmag2_start.tv_sec - r_cmpmag_start.tv_sec;
@@ -1167,7 +1178,7 @@ void cmplx_mag2_Wrapper(fx_pt1 * signal_power_arg /*= signal_power -> global*/, 
 #endif
 }
 
-void cmplx_mag2_Wrapper2(fx_pt1 * signal_power_arg, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/, 
+__attribute__((noinline))  void cmplx_mag2_Wrapper2(fx_pt1 * signal_power_arg, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/, 
 			unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz) {
 #if defined(HPVM) 
 	void* Section = __hetero_section_begin();
@@ -1184,8 +1195,10 @@ void cmplx_mag2_Wrapper2(fx_pt1 * signal_power_arg, size_t signal_power_arg_sz /
 #endif
 }
 
+#endif // if false
 
-void ffir_Wrapper(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/,
+
+__attribute__ ((noinline)) void ffir_Wrapper(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/,
 		fx_pt1 * avg_signal_power_arg /*= avg_signal_power -> global*/, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/,
 		unsigned num_inputs
 		 ) {
@@ -1194,6 +1207,7 @@ void ffir_Wrapper(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t
 			void * T = __hetero_task_begin(3, signal_power_arg, signal_power_arg_sz,
 					avg_signal_power_arg, avg_signal_power_arg_sz, num_inputs,
 					1, avg_signal_power_arg, avg_signal_power_arg_sz, "ffir_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 			{
 				DEBUG(printf("\nCalling fir (Moving Average 64)...\n"));
@@ -1209,7 +1223,7 @@ void ffir_Wrapper(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t
 
 				unsigned num_cmag2_vals = num_inputs; // copied from previous task (as the task doesn't change the value of this)
 				unsigned num_mavg64_vals = num_cmag2_vals;
-				DO_NUM_IOS_ANALYSIS(printf("Calling fir (Moving Average 64) : IN %u OUT %u\n", num_cmag2_vals, num_mavg64_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling fir (Moving Average 64) : IN %u OUT %u\n", num_cmag2_vals, num_mavg64_vals));
 
 #ifdef INT_TIME
 				gettimeofday(&r_fir_start, NULL);
@@ -1229,7 +1243,7 @@ void ffir_Wrapper(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t
 #endif
 }
 
-void ffir_Wrapper2(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/,
+__attribute__((noinline))  void ffir_Wrapper2(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/,
 		fx_pt1 * avg_signal_power_arg /*= avg_signal_power -> global*/, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/,
 		unsigned num_inputs
 		 ) {
@@ -1249,7 +1263,7 @@ void ffir_Wrapper2(fx_pt1 * signal_power_arg /*= signal_power -> global*/, size_
 }
 
 
-void detect_early_exit_Wrapper(
+__attribute__ ((noinline)) void detect_early_exit_Wrapper(
 		fx_pt * cmpx_conj_out_arg /*= cmpx_conj_out -> global*/, size_t cmpx_conj_out_arg_sz /*= CMP_CONJ_MAX_SIZE*/,
 		unsigned num_inputs) {
 #if defined(HPVM) 
@@ -1264,10 +1278,10 @@ void detect_early_exit_Wrapper(
 
 				unsigned num_mavg64_vals = num_inputs; // copied from previous task (as prior tasks doesn't change the value of this)
 				unsigned num_cdiv_vals = num_mavg64_vals; // num_cmpcorr_vals;
-				DO_NUM_IOS_ANALYSIS(printf("Calling division: IN %u OUT %u : CMAG %u \n", num_mavg64_vals, num_cdiv_vals, num_cmag_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling division: IN %u OUT %u : CMAG %u \n", num_mavg64_vals, num_cdiv_vals, num_cmag_vals));
 				// Ensure we've picked the MIN(num_mavg64_vals, num_cmag_vals) -- should have an a-priori known relationship!
 				if (num_mavg64_vals > num_cmag_vals) {
-					printf("ERROR : num_mavg64_vals = %u > %u = num_cmag_vals\n", num_mavg64_vals, num_cmag_vals);
+					//printf("ERROR : num_mavg64_vals = %u > %u = num_cmag_vals\n", num_mavg64_vals, num_cmag_vals);
 					// TODO: The following exit call causes the warning "Begin and end marker functions are not correctly nested!" 
 					// This is expected; but as along the this if path isn't take at runtime everything will run as expected
 					exit(-8);
@@ -1279,7 +1293,7 @@ void detect_early_exit_Wrapper(
 #endif
 }
 
-void detect_early_exit_Wrapper2(
+__attribute__((noinline))  void detect_early_exit_Wrapper2(
 		fx_pt * cmpx_conj_out_arg /*= cmpx_conj_out -> global*/, size_t cmpx_conj_out_arg_sz /*= CMP_CONJ_MAX_SIZE*/,
 		unsigned num_inputs) {
 #if defined(HPVM) 
@@ -1297,7 +1311,7 @@ void detect_early_exit_Wrapper2(
 
 
 
-void division_Wrapper(fx_pt1 * correlation_arg, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
+__attribute__ ((noinline)) void division_Wrapper(fx_pt1 * correlation_arg, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
 		unsigned num_inputs,
 		fx_pt1 * avg_signal_power_arg, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/, 
 		fx_pt1 * the_correlation_arg, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/) {
@@ -1306,6 +1320,7 @@ void division_Wrapper(fx_pt1 * correlation_arg, size_t correlation_arg_sz /*= CM
 			void * T = __hetero_task_begin(4, correlation_arg, correlation_arg_sz, num_inputs,
 					avg_signal_power_arg, avg_signal_power_arg_sz, the_correlation_arg, the_correlation_arg_sz,
 					1, the_correlation_arg, the_correlation_arg_sz, "division_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 			{
 #ifdef INT_TIME
@@ -1330,7 +1345,7 @@ void division_Wrapper(fx_pt1 * correlation_arg, size_t correlation_arg_sz /*= CM
 
 }
 
-void division_Wrapper2(fx_pt1 * correlation_arg, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
+__attribute__((noinline))  void division_Wrapper2(fx_pt1 * correlation_arg, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
 		unsigned num_inputs,
 		fx_pt1 * avg_signal_power_arg, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/, 
 		fx_pt1 * the_correlation_arg, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/) {
@@ -1350,7 +1365,7 @@ void division_Wrapper2(fx_pt1 * correlation_arg, size_t correlation_arg_sz /*= C
 
 }
 
-void sync_short_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
+__attribute__ ((noinline)) void sync_short_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
 		fx_pt * sync_short_out_frames_arg, size_t sync_short_out_frames_arg_sz /*=320*/,
 		fx_pt1 * the_correlation_arg, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/,
 		float * ss_freq_offset /*local*/, size_t ss_freq_offset_sz /*=1*/,
@@ -1367,12 +1382,13 @@ void sync_short_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_comp
 					3, sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
 					ss_freq_offset, ss_freq_offset_sz, num_sync_short_vals, num_sync_short_vals_sz,
 					"sync_short_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 			{
 				unsigned num_mavg64_vals = num_inputs; // copied from previous task (as prior tasks doesn't change the value of this)
 				unsigned num_cdiv_vals = num_mavg64_vals; // num_cmpcorr_vals;
 
-				DO_NUM_IOS_ANALYSIS(printf("Calling sync_short: IN %u\n", num_cdiv_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling sync_short: IN %u\n", num_cdiv_vals));
 				// float ss_freq_offset;
 				// unsigned num_sync_short_vals;
 #ifdef INT_TIME
@@ -1383,7 +1399,7 @@ void sync_short_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_comp
 				sync_short(num_cdiv_vals, delay16_out_arg, correlation_complex_arg, the_correlation_arg, ss_freq_offset,
 						num_sync_short_vals, sync_short_out_frames_arg);
 
-				DO_NUM_IOS_ANALYSIS(printf("Back from sync_short: OUT num_sync_short_vals = %u\n", *num_sync_short_vals));
+				//DO_NUM_IOS_ANALYSIS(printf("Back from sync_short: OUT num_sync_short_vals = %u\n", *num_sync_short_vals));
 				DEBUG(printf(" ss_freq_offset = %12.8f  and num sync_short_values = %u\n", *ss_freq_offset,
 							*num_sync_short_vals);
 
@@ -1394,8 +1410,8 @@ void sync_short_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_comp
 								crealf(sync_short_out_frames_arg[ti]), cimagf(sync_short_out_frames_arg[ti]));
 						});
 
-				DO_NUM_IOS_ANALYSIS(printf("Calling delay320: IN %u OUT %u\n", *num_sync_short_vals,
-							320 + (*num_sync_short_vals)));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling delay320: IN %u OUT %u\n", *num_sync_short_vals,
+							//320 + (*num_sync_short_vals)));
 				// We've used a similar memory-placement trick to avoid having to do the delay320 function; sync_short_out_frames = &(frame_d[320])
 				//delay320(frame_d, synch_short_out_frames);
 				DEBUG(for (int ti = 0; ti < 320 + (*num_sync_short_vals); ti++) {
@@ -1411,7 +1427,7 @@ void sync_short_Wrapper(fx_pt * correlation_complex_arg, size_t correlation_comp
 
 }
 
-void sync_short_Wrapper2(fx_pt * correlation_complex_arg, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
+__attribute__((noinline))  void sync_short_Wrapper2(fx_pt * correlation_complex_arg, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
 		fx_pt * sync_short_out_frames_arg, size_t sync_short_out_frames_arg_sz /*=320*/,
 		fx_pt1 * the_correlation_arg, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/,
 		float * ss_freq_offset /*local*/, size_t ss_freq_offset_sz /*=1*/,
@@ -1443,7 +1459,7 @@ void sync_short_Wrapper2(fx_pt * correlation_complex_arg, size_t correlation_com
 }
 
 
-void sync_long_Wrapper(float * sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/,
+__attribute__ ((noinline)) void sync_long_Wrapper(float * sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/,
 		unsigned * num_sync_long_vals /*local*/, size_t num_sync_long_vals_sz /*=1*/,
 		unsigned * num_sync_short_vals /*local*/, size_t num_sync_short_vals_sz /*=1*/,
 		fx_pt * sync_short_out_frames_arg, size_t sync_short_out_frames_arg_sz /*=320*/,
@@ -1457,9 +1473,10 @@ void sync_long_Wrapper(float * sl_freq_offset /*local*/, size_t sl_freq_offset_s
 					d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz,
 					3, sl_freq_offset, sl_freq_offset_sz, num_sync_long_vals, num_sync_long_vals_sz,
 					d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz, "sync_long_task_body");
+			__hpvm__hint(DEVICE); 
 #endif
 
-			DO_NUM_IOS_ANALYSIS(printf("Calling sync_long: IN %u\n", *num_sync_short_vals));
+			//DO_NUM_IOS_ANALYSIS(printf("Calling sync_long: IN %u\n", *num_sync_short_vals));
 			// float sl_freq_offset;
 			// unsigned num_sync_long_vals;
 #ifdef INT_TIME
@@ -1469,7 +1486,7 @@ void sync_long_Wrapper(float * sl_freq_offset /*local*/, size_t sl_freq_offset_s
 #endif
 			sync_long(*num_sync_short_vals, sync_short_out_frames_arg, frame_d, sl_freq_offset, num_sync_long_vals,
 					d_sync_long_out_frames_arg);
-			DO_NUM_IOS_ANALYSIS(printf("Back from synch_long: OUT num_sync_long_vals = %u\n", *num_sync_long_vals));
+			//DO_NUM_IOS_ANALYSIS(printf("Back from synch_long: OUT num_sync_long_vals = %u\n", *num_sync_long_vals));
 			DEBUG(printf(" sl_freq_offset = %12.8f\n", *sl_freq_offset);
 					for (int ti = 0; ti < 32619; ti++) {
 					printf("  SYNC_LONG_OUT %5u  %12.8f %12.8f : FR_D %12.8f %12.8f : D_FR_L %12.8f %12.8f\n", ti,
@@ -1484,7 +1501,7 @@ void sync_long_Wrapper(float * sl_freq_offset /*local*/, size_t sl_freq_offset_s
 #endif
 }
 
-void sync_long_Wrapper2(float * sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/,
+__attribute__((noinline))  void sync_long_Wrapper2(float * sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/,
 		unsigned * num_sync_long_vals /*local*/, size_t num_sync_long_vals_sz /*=1*/,
 		unsigned * num_sync_short_vals /*local*/, size_t num_sync_short_vals_sz /*=1*/,
 		fx_pt * sync_short_out_frames_arg, size_t sync_short_out_frames_arg_sz /*=320*/,
@@ -1511,7 +1528,7 @@ void sync_long_Wrapper2(float * sl_freq_offset /*local*/, size_t sl_freq_offset_
 #endif
 }
 
-void gr_equalize_Wrapper(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+__attribute__ ((noinline)) void gr_equalize_Wrapper(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
 		fx_pt1 * fft_ar_i /*local*/, size_t fft_ar_i_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
 		unsigned * num_fft_outs /*local*/, size_t num_fft_outs_sz /*=1*/,
 		fx_pt * toBeEqualized /*local*/, size_t toBeEqualized_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
@@ -1530,6 +1547,7 @@ void gr_equalize_Wrapper(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAM
 					num_sync_long_vals, num_sync_long_vals_sz,
 					4, toBeEqualized, toBeEqualized_sz, equalized, equalized_sz,
 					num_eq_out_bits, num_eq_out_bits_sz, psdu, psdu_sz, "gr_equalize_task_body");
+			 __hpvm__hint(DEVICE);
 #endif
 
 			// equalize
@@ -1547,7 +1565,7 @@ void gr_equalize_Wrapper(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAM
 				}
 
 				DEBUG(printf("\nCalling gr_equalize (frame_equalizer) with wifi_start = %12.8f\n", wifi_start));
-				DO_NUM_IOS_ANALYSIS(printf("Calling gr_equalize (frame_equalizer): IN %u\n", *num_fft_outs));
+				//DO_NUM_IOS_ANALYSIS(printf("Calling gr_equalize (frame_equalizer): IN %u\n", *num_fft_outs));
 				// unsigned num_eq_out_bits;
 				unsigned num_eq_out_sym;
 #ifdef INT_TIME
@@ -1559,7 +1577,7 @@ void gr_equalize_Wrapper(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAM
 
 				DEBUG(printf("GR_FR_EQ : fft_outs = %u items %u ffts : num_eq_out_bits = %u %u : num_eq_out_sym = %u\n",
 							*num_fft_outs, (*num_fft_outs) / 64, *num_eq_out_bits, (*num_eq_out_bits) / 48, num_eq_out_sym));
-				DO_NUM_IOS_ANALYSIS(printf("Back from gr_equalize : OUT %u\n", *num_eq_out_bits));
+				//DO_NUM_IOS_ANALYSIS(printf("Back from gr_equalize : OUT %u\n", *num_eq_out_bits));
 
 				DEBUG(for (int ti = 0; ti < *num_eq_out_bits; ti++) {
 						printf(" FR_EQ_OUT %5u : toBeEQ %12.8f %12.8f : EQLZD %12.8f %12.8f : EQ_BIT %u\n", ti,
@@ -1574,7 +1592,7 @@ void gr_equalize_Wrapper(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAM
 }
 
 
-void gr_equalize_Wrapper2(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+__attribute__((noinline))  void gr_equalize_Wrapper2(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
 		fx_pt1 * fft_ar_i /*local*/, size_t fft_ar_i_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
 		unsigned * num_fft_outs /*local*/, size_t num_fft_outs_sz /*=1*/,
 		fx_pt * toBeEqualized /*local*/, size_t toBeEqualized_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
@@ -1606,7 +1624,7 @@ void gr_equalize_Wrapper2(fx_pt1 * fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRA
 }
 
 
-void sdr_descrambler_Wrapper(uint8_t * scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
+__attribute__ ((noinline)) void sdr_descrambler_Wrapper(uint8_t * scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
 		unsigned * psdu /*local*/, size_t psdu_sz /*=1*/,
 		int * out_msg_len, size_t out_msg_len_sz, 
 		uint8_t * out_msg, size_t out_msg_sz) {
@@ -1615,10 +1633,11 @@ void sdr_descrambler_Wrapper(uint8_t * scrambled_msg /*local*/, size_t scrambled
 			void * T = __hetero_task_begin(4, scrambled_msg, scrambled_msg_sz, psdu, psdu_sz,
 					out_msg_len, out_msg_len_sz, out_msg, out_msg_sz,
 					2, out_msg_len, out_msg_len_sz, out_msg, out_msg_sz, "sdr_descrambler_task_body");
+			__hpvm__hint(DEVICE);
 #endif
 
 			//descrambler
-			DO_NUM_IOS_ANALYSIS(printf("Calling sdr_descrambler with psdu = %u\n", *psdu));
+			//DO_NUM_IOS_ANALYSIS(printf("Calling sdr_descrambler with psdu = %u\n", *psdu));
 #ifdef INT_TIME
 			gettimeofday(&r_descrmbl_start, NULL);
 			r_decsignl_sec += r_descrmbl_start.tv_sec - r_decsignl_start.tv_sec;
@@ -1640,7 +1659,7 @@ void sdr_descrambler_Wrapper(uint8_t * scrambled_msg /*local*/, size_t scrambled
 }
 
 
-void sdr_descrambler_Wrapper2(uint8_t * scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
+__attribute__((noinline))  void sdr_descrambler_Wrapper2(uint8_t * scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
 		unsigned * psdu /*local*/, size_t psdu_sz /*=1*/,
 		int * out_msg_len, size_t out_msg_len_sz, 
 		uint8_t * out_msg, size_t out_msg_sz) {
@@ -1658,7 +1677,7 @@ void sdr_descrambler_Wrapper2(uint8_t * scrambled_msg /*local*/, size_t scramble
 #endif
 }
 
-void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz,
+__attribute__ ((noinline)) void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz,
 		int * out_msg_len, size_t out_msg_len_sz, uint8_t * out_msg, size_t out_msg_sz,
 		uint8_t * scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
 		// Local variables for compute
@@ -1776,8 +1795,9 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 					1, signal_power_arg, signal_power_arg_sz, "cmplx_mag2_task");
 #endif
 			{
-				cmplx_mag2_Wrapper2(signal_power_arg, signal_power_arg_sz, num_inputs,
-                                        input_data_arg, input_data_arg_sz);
+				//cmplx_mag2_Wrapper2(signal_power_arg, signal_power_arg_sz, num_inputs,
+                                //        input_data_arg, input_data_arg_sz);
+				complex_to_mag_squared(signal_power_arg, num_inputs, input_data_arg);
 			}
 #if defined(HPVM) 
 			__hetero_task_end(T5);
@@ -1914,7 +1934,7 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 			//decode signal
 
 #if !defined(HPVM)
-			DO_NUM_IOS_ANALYSIS(printf("Calling decode_signal: IN %u\n", *num_eq_out_bits));
+			//DO_NUM_IOS_ANALYSIS(printf("Calling decode_signal: IN %u\n", *num_eq_out_bits));
 #ifdef INT_TIME
 			gettimeofday(&r_decsignl_start, NULL);
 			r_eqlz_sec += r_decsignl_start.tv_sec - r_eqlz_start.tv_sec;
@@ -1936,7 +1956,7 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 					d_ntraceback_arg, d_ntraceback_arg_sz);
 
 #if !defined(HPVM)
-			DO_NUM_IOS_ANALYSIS(printf("Back from decode_signal: OUT %u\n", num_dec_bits));
+			//DO_NUM_IOS_ANALYSIS(printf("Back from decode_signal: OUT %u\n", num_dec_bits));
 			DEBUG(for (int ti = 0; ti < num_dec_bits; ti++) {
 					printf(" DEC_OUTS %5u : EQLZD %12.8f %12.8f : DEC_BIT %u\n", ti, crealf(toBeEqualized[ti]),
 							cimagf(toBeEqualized[ti]), scrambled_msg[ti]);

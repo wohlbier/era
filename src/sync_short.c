@@ -77,7 +77,7 @@ void sync_short( unsigned num_inputs, fx_pt input_sample[SYNC_S_MAX_IN_SIZE], fx
     for (unsigned k = frame_start; (k < num_inputs /*SYNC_S_MAX_ABS_SIZE*/) && (out_idx < MAX_SAMPLES); k++) {
       fx_pt1_ext2 mult = -(fx_pt1_ext2)d_freq_offset * k; // pos_ext;
       
-      fx_pt_ext esp = (fx_pt_ext)(cos((fx_pt1_ext1)mult) + sin((fx_pt1_ext1)mult) * I);
+      fx_pt_ext esp = (fx_pt_ext)(cos((float)mult) + sin((float)mult) * I);
       DEBUG2(printf("  -d_freq_offset * k = %12.8f * %5u = %12.8f :  %12.8f %12.8f\n", d_freq_offset, k, mult, esp.real(), esp.imag() ));
       //DEBUG2(printf("  -d_freq_offset * pos_ext = %12.8f * %12.8f = %12.8f :  %12.8f %12.8f\n", d_freq_offset, pos_ext, mult, esp.real(), esp.imag() ));
       fx_pt_ext prod= (fx_pt_ext)(input_sample[k] *  esp);
