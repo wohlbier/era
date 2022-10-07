@@ -6,9 +6,10 @@ import os
 import sys
 
 n_cars  = 2
-bagfile = '/dccstor/epochs/ajvega/era/data/2020-09-10-14-43-09.bag'
-src_dir = '/dccstor/epochs/ajvega/era/src'
-bin_dir = '/dccstor/epochs/ajvega/era/build'
+path = '/home/era/'
+bagfile = path + 'src/cv/yolo/2020-09-10-14-43-09.bag'
+src_dir = path + 'src'
+bin_dir = path + 'build'
 
 processes = []
 cwd = os.getcwd()
@@ -24,11 +25,11 @@ def main():
             print('Usage: ' + sys.argv[0] + ' [n_steps > 0]')
             sys.exit(-1)
         steps = sys.argv[1]
-        n_steps = '-s ' + str(steps)       
+        n_steps = '-s ' + str(steps)
         print('***** Starting ERA with ' + str(n_cars) + ' cars (max steps: ' + str(steps) + ') *****\n')
     else:
         print('***** Starting ERA with ' + str(n_cars) + ' cars *****\n')
-    
+
     print('>>> Starting bag (trace) reading')
     for car in range(n_cars):
         print('  - For car ' + str(car))
@@ -68,7 +69,7 @@ def main():
             p = subprocess.Popen(shlex.split(cmd), stdout=out, stderr=subprocess.STDOUT, cwd=bin_dir)
             processes.append(p)
     print()
-    
+
     print('>>> Waiting for all processes to complete... ', end='', flush=True)
     exit_codes = [p.wait() for p in processes]
     print('DONE!')
@@ -77,5 +78,3 @@ def main():
 
 if __name__ == '__main__':
    main()
-
-
