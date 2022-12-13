@@ -3,15 +3,16 @@
 # BUILD
 ```bash
 docker build -f <small/full>/Dockerfile -t <name>:<tag> ./
+docker build -f small/Dockerfile --build-arg PROXY=${HTTP_PROXY} -t erademo:v0 ./
 ```
 # RUN
 ## Persistent container
 ```bash
-docker run -uespuser -it <name>:<tag> /bin/bash 
+docker run -uespuser -it <name>:<tag> /bin/bash
 ```
 ## Non-persistent container
 ```bash
-docker run -uespuser --rm -it <name>:<tag> /bin/bash 
+docker run -uespuser --rm -it <name>:<tag> /bin/bash
 ```
 ## Graphical support non-persistent container
 ```bash

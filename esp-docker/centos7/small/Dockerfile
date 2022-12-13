@@ -1,5 +1,10 @@
 FROM centos:7
 
+ARG PROXY
+ENV HTTP_PROXY=${PROXY}
+ENV HTTPS_PROXY=${PROXY}
+ENV ftp_proxy=${PROXY}
+
 WORKDIR /home
 
 # Add repo for cmake3
@@ -26,11 +31,11 @@ RUN wget http://ftp.gnu.org/gnu/make/make-4.2.1.tar.gz && \
     cd make-4.2.1 && ./configure && bash build.sh && ./make install
 RUN ln -s /lib64/libtiff.so.5 /lib64/libtiff.so.3 && \
     ln -s /usr/lib64/libmpc.so.3 /usr/lib64/libmpc.so.2  && \
-    ln -sf /usr/local/bin/make /usr/bin/gmake && \ 
+    ln -sf /usr/local/bin/make /usr/bin/gmake && \
     # enable X11 forwarding
     sed -i 's/#   ForwardX11 no/ForwardX11 yes/g' /etc/ssh/ssh_config
 
-RUN wget https://cmake.org/files/v3.18/cmake-3.18.0-rc1.tar.gz && tar xvzf cmake-3.18.0-rc1.tar.gz && cd cmake-3.18.0-rc1 && ./bootstrap && make && make install 
+RUN wget https://cmake.org/files/v3.18/cmake-3.18.0-rc1.tar.gz && tar xvzf cmake-3.18.0-rc1.tar.gz && cd cmake-3.18.0-rc1 && ./bootstrap && make && make install
 
 # Install Z3 Library needed by LLVM
 RUN wget http://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-7.3.0/gcc-7.3.0.tar.gz && \
@@ -38,7 +43,7 @@ RUN wget http://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-
     ./configure --disable-multilib --enable-languages=c,c++ && make -j8 && \
     make install && cd .. && git clone https://github.com/Z3Prover/z3.git && cd z3 && \
     git checkout tags/z3-4.7.1 && python scripts/mk_make.py && cd build \
-    && make -j4 && make install 
+    && make -j4 && make install
 
 #Need jpeg for pillow which is needed for torchvision
 RUN yum install -y libjpeg-devel
@@ -70,13 +75,13 @@ RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
     cd /home/espuser/esp/accelerators/third-party/NV_NVDLA && \
     rm -rf ip/verif sw/prebuilt sw/regression && \
     cd /home/espuser/esp && \
-    (echo y; echo /home/espuser/riscv; echo 4; echo y; echo n; echo n) | bash utils/toolchain/build_riscv_toolchain.sh && rm -rf /tmp/_riscv_build 
+    (echo y; echo /home/espuser/riscv; echo 4; echo y; echo n; echo n) | bash utils/toolchain/build_riscv_toolchain.sh && rm -rf /tmp/_riscv_build
 #(echo y; echo /home/espuser/riscv32imc; echo 4; echo n) | bash utils/toolchain/build_riscv32imc_toolchain.sh && rm -rf /tmp/_riscv32imc_build
 
 # HPVM repo setup, install and compile
 RUN conda config --set channel_priority strict
 RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git
-RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && conda create --name hpvm python=3.7 
+RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && conda create --name hpvm python=3.7
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c conda-forge \
       Cython=0.29.30
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c conda-forge \
@@ -102,7 +107,7 @@ RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c co
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c pytorch -c conda-forge \
       pytorch=1.5.0 \
       tensorflow==1.14.0 \
-      torchvision==0.6 
+      torchvision==0.6
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && pip install \
       argparse==1.4 \
       graphviz==0.10 \
@@ -132,7 +137,7 @@ RUN echo "source scl_source enable devtoolset-8" >> /home/espuser/.bashrc
 RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && conda activate hpvm \
       && sed -i 's/--recursive\"])/--recursive\"],cwd=\"\/home\/espuser\/hpvm-release\")/g' scripts/hpvm_installer.py \
       && sed -i 's/=g++\",/=g++\", \"-DCMAKE_CXX_STANDARD=17\",/g' scripts/hpvm_installer.py \
-      && ./install.sh -t "X86;RISCV" -d 
+      && ./install.sh -t "X86;RISCV" -d
 RUN cd hpvm-release/hpvm/build \
       && cmake -DCMAKE_CXX_STANDARD=17 -DLLVM_TARGETS_TO_BUILD="X86;RISCV" -DCMAKE_BUILD_TYPE=Debug ../llvm \
       && make -j4
@@ -163,7 +168,7 @@ ENV RISCV_BIN_DIR=/home/espuser/riscv/bin
 ENV RISCV_BOOST_DIR=/home/espuser/riscv_boost_cc
 ENV ESP_ROOT=/home/espuser/esp
 ENV SOC_LIB_DIR=/home/espuser/scheduler-library-hpvm
-ENV SCHED_CONFIG=soc_utils/config_files/base_me_p3.config 
+ENV SCHED_CONFIG=soc_utils/config_files/base_me_p3.config
 ENV RISCV_DIR=/home/espuser/riscv
 
 ENV SCHED_LIB_DIR=/home/espuser/scheduler-library-hpvm/sched_library
