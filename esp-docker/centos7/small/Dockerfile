@@ -148,7 +148,7 @@ RUN mkdir -p /home/espuser/riscv_boost_cc
 RUN wget -c http://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.bz2 --no-check-certificate \
     && tar xvjf boost_1_66_0.tar.bz2 \
     && rm boost_1_66_0.tar.bz2
-COPY small/boost.patch boost_1_66_0
+COPY --chown=espuser:espuser small/boost.patch boost_1_66_0
 ENV PATH=/home/espuser/riscv/bin:${PATH}
 # -l in patch is to handle white spaces on ends of lines
 # exit 0; is bc boost reports an error in the build, but it is fine.
@@ -187,7 +187,7 @@ RUN git clone -b hetero-integration https://github.com/IBM/era.git
 # RUN cd era && git checkout f875d16784a7bcdbf7be499af6c24b8a37f688e7
 RUN cd era && git checkout 3ebe6013f314bb037443c17fe90406262bb67ae3
 
-COPY small/setup_paths.patch /home/espuser/era/
+COPY --chown=espuser:espuser small/setup_paths.patch /home/espuser/era/
 
 RUN cd era && patch -p0 -l < setup_paths.patch && make clean clobber && bash -c "./compile-era.sh riscv"
 
@@ -196,12 +196,12 @@ USER root
 # enable X11 forwarding
 RUN sed -i 's/#   ForwardX11 no/ForwardX11 yes/g' /etc/ssh/ssh_config
 # copy over environment setup script (without CAD tools)
-COPY small/esp_env.sh /home/espuser
+COPY --chown=espuser:espuser small/esp_env.sh /home/espuser
 # copy over environment setup script (with CAD tools)
-COPY small/esp_env_cad.sh /home/espuser
+COPY --chown=espuser:espuser small/esp_env_cad.sh /home/espuser
 # copy over bashrc script
-COPY small/bashrc /root/.bashrc
+COPY --chown=espuser:espuser small/bashrc /root/.bashrc
 # copy over tmux.conf script
-COPY small/tmux.conf /root/.tmux.conf
+COPY --chown=espuser:espuser small/tmux.conf /root/.tmux.conf
 # copy over emacs script
-COPY small/emacs /root/.emacs
+COPY --chown=espuser:espuser small/emacs /root/.emacs
