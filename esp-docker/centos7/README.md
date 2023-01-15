@@ -3,7 +3,7 @@
 # BUILD
 ```bash
 docker build -f <small/full>/Dockerfile -t <name>:<tag> ./
-docker build -f small/Dockerfile --build-arg PROXY=${HTTP_PROXY} -t erademo:v0 ./
+docker build -f small/Dockerfile --build-arg LOCAL_UID=$(id -u $USER) --build-arg LOCAL_GID=$(id -g $USER) --build-arg PROXY=${HTTP_PROXY} -t erademo:<moniker> ./
 ```
 # RUN
 ## Persistent container
@@ -23,6 +23,7 @@ docker run -e DISPLAY --net=host -uespuser --rm -it <name>:<tag> /bin/bash
 * change in the dockerfile the uid of espuser to your local uid
 ```bash
 docker run -e DISPLAY -v /tmp/.X11-unix -v $HOME/.Xauthority:/home/espuser/.Xauthority --net=host -uespuser --rm -it <name>:<tag> /bin/bash
+docker run -e DISPLAY --net=host -uespuser --rm -it erademo:v0 /bin/bash
 ```
 # Troubleshooting
 * If the build fails, try reducing the number of threads used in compilation in the Dockerfile lines 68/72 (default = 4)

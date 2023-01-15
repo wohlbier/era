@@ -5,6 +5,25 @@ ENV HTTP_PROXY=${PROXY}
 ENV HTTPS_PROXY=${PROXY}
 ENV ftp_proxy=${PROXY}
 
+# jgw
+# require local uid and gid
+ARG LOCAL_UID
+RUN test -n "$LOCAL_UID"
+ARG LOCAL_GID
+RUN test -n "$LOCAL_GID"
+# -l on adduser is to handle large uids, e.g.,
+# https://github.com/moby/moby/issues/5419
+RUN groupadd -g ${LOCAL_GID} espuser && \
+    adduser -l -u ${LOCAL_UID:-9001} -g espuser -m -s /bin/bash espuser
+
+#    yum install -y sudo && \
+#    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+#    usermod -aG sudo espuser
+# && \
+#    adduser espuser sudo
+# jgw
+
+
 WORKDIR /home
 
 # Add repo for cmake3
@@ -48,8 +67,6 @@ RUN wget http://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-
 #Need jpeg for pillow which is needed for torchvision
 RUN yum install -y libjpeg-devel
 
-# create non-root user
-RUN useradd -ms /bin/bash espuser
 # switch to non-root user
 USER espuser
 WORKDIR /home/espuser
@@ -205,3 +222,7 @@ COPY --chown=espuser:espuser small/bashrc /root/.bashrc
 COPY --chown=espuser:espuser small/tmux.conf /root/.tmux.conf
 # copy over emacs script
 COPY --chown=espuser:espuser small/emacs /root/.emacs
+
+# jgw
+# copy .Xauthority with right permisions. need to rebuild image each time
+COPY --chown=espuser:espuser .Xauthority /home/espuser/
