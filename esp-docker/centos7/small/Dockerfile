@@ -21,7 +21,7 @@ WORKDIR /home
 # Add repo for cmake3
 RUN yum install -y epel-release centos-release-scl
 # install python, perl,  CAD tools and software toolchain dependencies, miscellaneous
-RUN yum install -y python python-pip python-devel python3 python3-pip python3-devel python3-tkinter \
+RUN yum install -y python python-pip python-devel python3 python3-pip python3-devel python3-tkinter python-pmw \
     perl perl-Env perl-YAML perl-XML-Simple perl-ExtUtils-MakeMaker \
     perl-Thread-Queue perl-Capture-Tiny \
     xterm csh ksh zsh tcl glibc-devel glibc-devel.i686 \
@@ -78,6 +78,7 @@ RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
     git submodule update --init --recursive \
     accelerators/stratus_hls/common/inc \
     accelerators/chisel/hw rtl/caches/esp-caches rtl/cores/ariane/ariane \
+    rtl/caches/spandex-caches \
     soft/ariane/riscv-pk soft/ariane/riscv-tests \
     accelerators/third-party/NV_NVDLA/ip \
     accelerators/third-party/NV_NVDLA/sw && \
