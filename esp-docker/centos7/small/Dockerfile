@@ -16,14 +16,6 @@ RUN test -n "$LOCAL_GID"
 RUN groupadd -g ${LOCAL_GID} espuser && \
     adduser -l -u ${LOCAL_UID:-9001} -g espuser -m -s /bin/bash espuser
 
-#    yum install -y sudo && \
-#    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
-#    usermod -aG sudo espuser
-# && \
-#    adduser espuser sudo
-# jgw
-
-
 WORKDIR /home
 
 # Add repo for cmake3
@@ -224,5 +216,5 @@ COPY --chown=espuser:espuser small/tmux.conf /root/.tmux.conf
 COPY --chown=espuser:espuser small/emacs /root/.emacs
 
 # jgw
-# copy .Xauthority with right permisions. need to rebuild image each time
-COPY --chown=espuser:espuser .Xauthority /home/espuser/
+COPY --chown=espuser:espuser small/entrypoint.sh /home/espuser/entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]

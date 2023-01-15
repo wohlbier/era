@@ -5,7 +5,7 @@
 #
 
 # xilinx vivado environment
-export XILINX_VIVADO=/
+export XILINX_VIVADO=/bigdisk/packages/Xilinx/Vivado/2019.2
 
 # risc-v toolchain environment
 export RISCV=/home/espuser/riscv

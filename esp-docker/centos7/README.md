@@ -22,7 +22,8 @@ docker run -e DISPLAY --net=host -uespuser --rm -it <name>:<tag> /bin/bash
 * Make sure ownger and group of .Xauthority file is set to uid:gid = 1000:1000 or
 * change in the dockerfile the uid of espuser to your local uid
 ```bash
-docker run -e DISPLAY -v /tmp/.X11-unix -v $HOME/.Xauthority:/home/espuser/.Xauthority --net=host -uespuser --rm -it <name>:<tag> /bin/bash
+cp  ~/.Xauthority .
+docker run -e DISPLAY -v /tmp/.X11-unix -v $(pwd)/.Xauthority:/home/espuser/.Xauthority -v/bigdisk/packages/Xilinx:/opt/Xilinx --net=host -uespuser --rm -it erademo:<moniker> /bin/bash
 docker run -e DISPLAY --net=host -uespuser --rm -it erademo:v0 /bin/bash
 ```
 # Troubleshooting
