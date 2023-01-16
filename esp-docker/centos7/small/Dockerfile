@@ -13,15 +13,19 @@ ARG LOCAL_GID
 RUN test -n "$LOCAL_GID"
 # -l on adduser is to handle large uids, e.g.,
 # https://github.com/moby/moby/issues/5419
-RUN groupadd -g ${LOCAL_GID} espuser && \
-    adduser -l -u ${LOCAL_UID:-9001} -g espuser -m -s /bin/bash espuser
+RUN yum install -y sudo && \
+    groupadd -g ${LOCAL_GID} espuser && \
+    adduser -l -u ${LOCAL_UID:-9001} -g espuser -m -s /bin/bash espuser && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+    usermod -aG wheel espuser
+# jgw
 
 WORKDIR /home
 
 # Add repo for cmake3
 RUN yum install -y epel-release centos-release-scl
 # install python, perl,  CAD tools and software toolchain dependencies, miscellaneous
-RUN yum install -y python python-pip python-devel python3 python3-pip python3-devel python3-tkinter python-pmw \
+RUN yum install -y python python-pip python-devel python3 python3-pip python3-devel python3-tkinter \
     perl perl-Env perl-YAML perl-XML-Simple perl-ExtUtils-MakeMaker \
     perl-Thread-Queue perl-Capture-Tiny \
     xterm csh ksh zsh tcl glibc-devel glibc-devel.i686 \
@@ -36,6 +40,12 @@ RUN yum install -y python python-pip python-devel python3 python3-pip python3-de
     texinfo texinfo-tex help2man emacs vim xorg-x11-apps java \
     libopencl-devel boost-devel ninja-build gcc-c++ libmpc-devel mpfr-devel \
     gmp-devel pygame autoconf automake openssl-devel libtool --nogpgcheck
+
+# jgw
+RUN pip3 install Pmw
+RUN yum install -y qtcreator && \
+    ln -s /usr/bin/qmake-qt5 /usr/bin/qmake
+# jgw
 
 RUN wget http://ftp.gnu.org/gnu/make/make-4.2.1.tar.gz && \
     tar xvzf make-4.2.1.tar.gz && \
@@ -74,6 +84,7 @@ ENV PATH /home/espuser/miniconda3/bin:$PATH
 RUN git config --global url."https://github.com/".insteadOf git://github.com/ && git config --global url."https://gitlab.com/qemu-project/".insteadOf https://git.qemu.org/git/
 
 # clone ESP repository and install software toolchains
+# jgw: add spandex-caches
 RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
     git submodule update --init --recursive \
     accelerators/stratus_hls/common/inc \
