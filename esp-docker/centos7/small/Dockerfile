@@ -228,5 +228,7 @@ COPY --chown=espuser:espuser small/tmux.conf /root/.tmux.conf
 COPY --chown=espuser:espuser small/emacs /root/.emacs
 
 # jgw
+USER espuser
+RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && pip3 install Pmw
 COPY --chown=espuser:espuser small/entrypoint.sh /home/espuser/entrypoint.sh
 ENTRYPOINT ["./entrypoint.sh"]
