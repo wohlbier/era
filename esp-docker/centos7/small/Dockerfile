@@ -41,12 +41,6 @@ RUN yum install -y python python-pip python-devel python3 python3-pip python3-de
     libopencl-devel boost-devel ninja-build gcc-c++ libmpc-devel mpfr-devel \
     gmp-devel pygame autoconf automake openssl-devel libtool --nogpgcheck
 
-# jgw
-RUN pip3 install Pmw
-RUN yum install -y qtcreator && \
-    ln -s /usr/bin/qmake-qt5 /usr/bin/qmake
-# jgw
-
 RUN wget http://ftp.gnu.org/gnu/make/make-4.2.1.tar.gz && \
     tar xvzf make-4.2.1.tar.gz && \
     cd make-4.2.1 && ./configure && bash build.sh && ./make install
@@ -74,8 +68,9 @@ USER espuser
 WORKDIR /home/espuser
 
 # Install Anaconda
-RUN  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-      (echo y; echo yes; echo /home/espuser/miniconda3 ; echo yes) | bash Miniconda3-latest-Linux-x86_64.sh
+ARG CONDA=Miniconda3-py39_4.12.0-Linux-x86_64.sh
+RUN wget https://repo.anaconda.com/miniconda/${CONDA} && \
+     (echo y; echo yes; echo /home/espuser/miniconda3 ; echo yes) | bash ${CONDA}
 
 RUN echo "export LD_LIBRARY_PATH=/usr/local/lib64/:/usr/local/lib/" >> /home/espuser/.bashrc
 ENV LD_LIBRARY_PATH="/usr/local/lib64/:/usr/local/lib/"
@@ -229,6 +224,6 @@ COPY --chown=espuser:espuser small/emacs /root/.emacs
 
 # jgw
 USER espuser
-RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && pip3 install Pmw
+RUN conda init bash && . ~/.bashrc && pip3 install Pmw
 COPY --chown=espuser:espuser small/entrypoint.sh /home/espuser/entrypoint.sh
 ENTRYPOINT ["./entrypoint.sh"]
