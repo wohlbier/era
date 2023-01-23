@@ -177,8 +177,7 @@ RUN mkdir -p /home/espuser/boost
 # soc-library repo setup and compilation
 RUN git clone -b meta https://github.com/IBM/scheduler-library.git scheduler-library-hpvm \
     && cd scheduler-library-hpvm \
-    && git checkout 9c1d02a
-#     && git checkout ce19bef806eee14c58799e4960d98b01a7d02107
+    && git checkout de5f6205fb93b1234ebd94661f52a7f6338a2a38
 
 ENV HPVM_DIR=/home/espuser/hpvm-release/hpvm
 ENV RISCV_BIN_DIR=/home/espuser/riscv/bin
@@ -196,18 +195,27 @@ ENV LD_LIBRARY_PATH=${HPVM_DIR}/build/lib:${LD_LIBRARY_PATH}
 ENV PATH=${PATH}:${RISCV_BIN_DIR}
 
 RUN cd scheduler-library-hpvm && ln -sf hw_config_files/build_epochs0.config ./hardware.config \
-    && make hpvm-epochs
+    && make clean clobber && make hpvm-epochs
 
 #ERA repo setup and compile for FPGA
 RUN git clone -b hetero-integration https://github.com/IBM/era.git
-# RUN cd era && git checkout f875d16784a7bcdbf7be499af6c24b8a37f688e7
-RUN cd era && git checkout 3ebe6013f314bb037443c17fe90406262bb67ae3
+RUN cd era && git pull origin hetero-integration && git checkout a168cac
 
 COPY --chown=espuser:espuser small/setup_paths.patch /home/espuser/era/
 
 RUN cd era && patch -p0 -l < setup_paths.patch && make clean clobber && bash -c "./compile-era.sh riscv"
 
+RUN cp /home/espuser/era/predict.py /home/espuser/hpvm-release/hpvm/test/epoch_dnn
+
 USER root
+
+RUN cd /usr/lib && ln -s /home/espuser/miniconda3/lib/libpython3.7m.so libpython3.7m.so && \
+    ln -s /home/espuser/miniconda3/lib/libpython3.7m.so.1 libpython3.7m.so.1 && \
+    ln -s /home/espuser/miniconda3/lib/libpython3.7m.so.1.0 libpython3.7m.so.1.0 && \
+    ln -sf /home/espuser/miniconda3/envs/hpvm/lib/libstdc++.so.6 libstdc++.so.6 && \
+    ln -sf /home/espuser/miniconda3/envs/hpvm/lib/libstdc++.so.6.0.30 libstdc++.so.30 && \
+    cd /usr/local/lib64 && ln -sf /home/espuser/miniconda3/envs/hpvm/lib/libstdc++.so.6 libstdc++.so.6 && \
+    ln -sf /home/espuser/miniconda3/envs/hpvm/lib/libstdc++.so.6.0.30 libstdc++.so.30
 
 # enable X11 forwarding
 RUN sed -i 's/#   ForwardX11 no/ForwardX11 yes/g' /etc/ssh/ssh_config
