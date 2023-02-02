@@ -5,17 +5,10 @@ ENV HTTP_PROXY=${PROXY}
 ENV HTTPS_PROXY=${PROXY}
 ENV ftp_proxy=${PROXY}
 
-# jgw
-# require local uid and gid
-ARG LOCAL_UID
-RUN test -n "$LOCAL_UID"
-ARG LOCAL_GID
-RUN test -n "$LOCAL_GID"
 # -l on adduser is to handle large uids, e.g.,
 # https://github.com/moby/moby/issues/5419
 RUN yum install -y sudo && \
-    groupadd -g ${LOCAL_GID} espuser && \
-    adduser -l -u ${LOCAL_UID:-9001} -g espuser -m -s /bin/bash espuser && \
+    adduser -l -m -s /bin/bash espuser && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
     usermod -aG wheel espuser
 # jgw
@@ -97,8 +90,11 @@ RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
 
 # HPVM repo setup, install and compile
 RUN conda config --set channel_priority strict
-RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git
+RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git hpvm-release
+RUN cd hpvm-release/hpvm && git checkout c71f67fa64b4265573560495d46ad9bd2fa16a21
+
 RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && conda create --name hpvm python=3.7
+
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c conda-forge \
       Cython=0.29.30
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c conda-forge \
@@ -135,9 +131,6 @@ RUN conda init bash && . ~/.bashrc && conda activate hpvm && pip install \
       pytorch-lightning==1.3 \
       imgaug==0.4.0
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && pip install lightnet==2.0.1 torchmetrics==0.6.0
-RUN rm -rf hpvm-release
-RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git hpvm-release
-RUN cd hpvm-release/hpvm && git checkout c71f67fa64b4265573560495d46ad9bd2fa16a21
 
 USER root
 # Install gcc > 8.0.0
@@ -233,5 +226,10 @@ COPY --chown=espuser:espuser small/emacs /root/.emacs
 # jgw
 USER espuser
 RUN conda init bash && . ~/.bashrc && pip3 install Pmw
-COPY --chown=espuser:espuser small/entrypoint.sh /home/espuser/entrypoint.sh
-ENTRYPOINT ["./entrypoint.sh"]
+COPY small/bash_aliases /home/espuser/.bash_aliases
+
+# go in as root and change user in entrypoint.sh
+USER root
+RUN mkdir /tools
+COPY small/entrypoint.sh /root/entrypoint.sh
+ENTRYPOINT ["/root/entrypoint.sh"]
