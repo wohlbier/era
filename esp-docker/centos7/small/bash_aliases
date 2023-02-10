@@ -1,13 +1,14 @@
 export XAUTHORITY=/home/espuser/env/.Xauthority
 #export XILINXD_LICENSE_FILE=/home/espuser/Xilinx.pinkbird.lic
 export XILINXD_LICENSE_FILE=/home/espuser/Xilinx.XPS.lic
-export VIVADO_PATH=/tools/Xilinx/Vivado/2019.2
-. ${VIVADO_PATH}/settings64.sh
+export XILINX_VIVADO=/tools/Xilinx/Vivado/2019.2
+. ${XILINX_VIVADO}/settings64.sh
 export RISCV=/home/espuser/esp/riscv
-export PATH=${RISCV}/bin:${PATH}
+export RISCV32IMC=/home/espuser/riscv32imc
+export PATH=${RISCV}/bin:${RISCV32IMC}/bin:${PATH}
 
 echo "Setting up X forwarding"
-XAUTH=/home/espuser/env/.Xauthority
+XAUTH=/home/espuser/.Xauthority
 if test -f "$XAUTH"; then
     echo "Setting XAUTHORITY to $XAUTH"
     export XAUTHORITY=$XAUTH

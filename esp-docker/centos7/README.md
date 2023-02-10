@@ -35,6 +35,20 @@ drwxr-xr-x. 7 jgwohlbier         1000 4096 Jan  8 22:12 vcu118-epochs1p-c5isr02
 cp  ~/.Xauthority .
 docker run -e UID=$(id -u) -e DISPLAY --privileged -v$(pwd)/.Xauthority:/home/espuser/.Xauthority -v/tools/Xilinx:/tools/Xilinx -v$(pwd)/vcu118-epochs1p-c5isr01:/home/espuser/esp/socs/vcu118-epochs1p-c5isr01 -v$(pwd)/vcu118-epochs1p-c5isr02:/home/espuser/esp/socs/vcu118-epochs1p-c5isr02  --net=host --rm -it erademo:latest
 
+# in container
+# for programming fpga
+# one may need to fire up vivado and "Open Hardware Manager" to get the
+# running fpga's recognized.
+cd esp/socs/vcu118-epochs1p-c5isr01
+make fpga-program
+make fpga-run-linux
+# in another terminal
+
+# repeat for directory
+vcu118-epochs1p-c5isr02/
+
+
+
 # for joining an already running container
 docker ps
 docker exec -it -u espuser <containerid> /bin/bash

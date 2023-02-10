@@ -7,10 +7,12 @@ ENV ftp_proxy=${PROXY}
 
 # -l on adduser is to handle large uids, e.g.,
 # https://github.com/moby/moby/issues/5419
+# games is the name of the group /dev/ttyUSB in centos. In ubuntu is "dialout"
 RUN yum install -y sudo && \
     adduser -l -m -s /bin/bash espuser && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
-    usermod -aG wheel espuser
+    usermod -aG wheel espuser \
+    usermod -aG games espuser
 # jgw
 
 WORKDIR /home
@@ -73,7 +75,10 @@ RUN git config --global url."https://github.com/".insteadOf git://github.com/ &&
 
 # clone ESP repository and install software toolchains
 # jgw: add spandex-caches
-RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
+RUN git clone https://github.com/sld-columbia/esp.git && \
+    cd esp && \
+    git fetch --all --tags --prune && \
+    git checkout tags/2022.1.0 -b 2022.1.0 && \
     git submodule update --init --recursive \
     accelerators/stratus_hls/common/inc \
     accelerators/chisel/hw rtl/caches/esp-caches rtl/cores/ariane/ariane \
@@ -228,6 +233,7 @@ COPY --chown=espuser:espuser small/emacs /root/.emacs
 USER espuser
 RUN conda init bash && . ~/.bashrc && pip3 install Pmw
 COPY small/bash_aliases /home/espuser/.bash_aliases
+RUN echo ". .bash_aliases" >> /home/espuser/.bashrc
 
 # go in as root and change user in entrypoint.sh
 USER root
