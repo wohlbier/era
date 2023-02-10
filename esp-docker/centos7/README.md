@@ -34,7 +34,10 @@ drwxr-xr-x. 7 jgwohlbier         1000 4096 Jan  8 22:12 vcu118-epochs1p-c5isr02
 
 cp  ~/.Xauthority .
 docker run -e UID=$(id -u) -e DISPLAY --privileged -v$(pwd)/.Xauthority:/home/espuser/.Xauthority -v/tools/Xilinx:/tools/Xilinx -v$(pwd)/vcu118-epochs1p-c5isr01:/home/espuser/esp/socs/vcu118-epochs1p-c5isr01 -v$(pwd)/vcu118-epochs1p-c5isr02:/home/espuser/esp/socs/vcu118-epochs1p-c5isr02  --net=host --rm -it erademo:latest
-docker run -e DISPLAY --net=host -uespuser --rm -it erademo:v0
+
+# for joining an already running container
+docker ps
+docker exec -it -u espuser <containerid> /bin/bash
 ```
 # Troubleshooting
 * If the build fails, try reducing the number of threads used in compilation in the Dockerfile lines 68/72 (default = 4)

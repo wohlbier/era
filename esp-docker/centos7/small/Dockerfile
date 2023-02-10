@@ -91,6 +91,7 @@ RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
 # HPVM repo setup, install and compile
 RUN conda config --set channel_priority strict
 RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git hpvm-release
+# COPY --chown=espuser:espuser hpvm-release hpvm-release
 RUN cd hpvm-release/hpvm && git checkout c71f67fa64b4265573560495d46ad9bd2fa16a21
 
 RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && conda create --name hpvm python=3.7
