@@ -11,7 +11,7 @@ ENV ftp_proxy=${PROXY}
 RUN yum install -y sudo && \
     adduser -l -m -s /bin/bash espuser && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
-    usermod -aG wheel espuser \
+    usermod -aG wheel espuser && \
     usermod -aG games espuser
 # jgw
 
