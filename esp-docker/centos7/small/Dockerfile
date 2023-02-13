@@ -13,6 +13,9 @@ RUN yum install -y sudo && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
     usermod -aG wheel espuser && \
     usermod -aG games espuser
+COPY --chown=espuser:espuser ./small/gitconfig /home/espuser/.gitconfig
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN echo 'espuser:espuser' | chpasswd
 # jgw
 
 WORKDIR /home
@@ -77,8 +80,8 @@ RUN git config --global url."https://github.com/".insteadOf git://github.com/ &&
 # jgw: add spandex-caches
 RUN git clone https://github.com/sld-columbia/esp.git && \
     cd esp && \
-    git fetch --all --tags --prune && \
-    git checkout tags/2022.1.0 -b 2022.1.0 && \
+    git fetch --all --prune && \
+    git checkout b57413b -b 2022.1.0 && \
     git submodule update --init --recursive \
     accelerators/stratus_hls/common/inc \
     accelerators/chisel/hw rtl/caches/esp-caches rtl/cores/ariane/ariane \
@@ -95,8 +98,8 @@ RUN git clone https://github.com/sld-columbia/esp.git && \
 
 # HPVM repo setup, install and compile
 RUN conda config --set channel_priority strict
-RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git hpvm-release
-# COPY --chown=espuser:espuser hpvm-release hpvm-release
+#RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git hpvm-release
+COPY --chown=espuser:espuser hpvm-release hpvm-release
 RUN cd hpvm-release/hpvm && git checkout c71f67fa64b4265573560495d46ad9bd2fa16a21
 
 RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && conda create --name hpvm python=3.7
