@@ -45,7 +45,7 @@ cd esp/socs/vcu118-epochs1p-c5isr01
 # sometimes running
 sudo dmesg | grep tty
 # can help, but it can be trial and error. Start one
-minicom -D /dev/ttyUSB1 -b 38400
+sudo minicom -D /dev/ttyUSB1 -b 38400
 # and run
 make fpga-run
 # from in the container to see if it lights up.
