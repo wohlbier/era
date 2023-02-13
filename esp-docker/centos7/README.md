@@ -35,19 +35,25 @@ drwxr-xr-x. 7 jgwohlbier         1000 4096 Jan  8 22:12 vcu118-epochs1p-c5isr02
 cp  ~/.Xauthority .
 docker run -e UID=$(id -u) -e DISPLAY --privileged -v$(pwd)/.Xauthority:/home/espuser/.Xauthority -v/tools/Xilinx:/tools/Xilinx -v$(pwd)/vcu118-epochs1p-c5isr01:/home/espuser/esp/socs/vcu118-epochs1p-c5isr01 -v$(pwd)/vcu118-epochs1p-c5isr02:/home/espuser/esp/socs/vcu118-epochs1p-c5isr02  --net=host --rm -it erademo:latest
 
+# On host start vivado and "Flow -> Open Hardware Manager" to get the
+# running fpga's recognized. Make sure the one targeted shows "Open".
+
 # in container
-# for programming fpga
-# one may need to fire up vivado and "Open Hardware Manager" to get the
-# running fpga's recognized.
 cd esp/socs/vcu118-epochs1p-c5isr01
-make fpga-program
+
+# Connecting minicom can be a pain because there are several /dev/ttyUSB*
+# sometimes running
+sudo dmesg | grep tty
+# can help, but it can be trial and error. Start one
+minicom -D /dev/ttyUSB1 -b 38400
+# and run
+make fpga-run
+# from in the container to see if it lights up.
+# start linux, which can then be logged into from minicom as root, pass openesp
 make fpga-run-linux
-# in another terminal
 
 # repeat for directory
 vcu118-epochs1p-c5isr02/
-
-
 
 # for joining an already running container
 docker ps
